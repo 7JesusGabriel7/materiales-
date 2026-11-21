@@ -162,8 +162,11 @@ CREATE TABLE IF NOT EXISTS configuracion_negocio (
   direccion VARCHAR(255) NULL,
   telefono VARCHAR(60) NULL,
   rfc VARCHAR(60) NULL,
-  mensaje_ticket VARCHAR(255) NULL,
+  mensaje_ticket VARCHAR(500) NULL,
+  mensaje_presupuesto VARCHAR(500) NULL,
+  mensaje_pdf VARCHAR(500) NULL,
   mostrar_camion_ticket TINYINT(1) NOT NULL DEFAULT 1,
+  icono_ticket VARCHAR(40) NOT NULL DEFAULT 'camion_volteo',
   fecha_modificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -175,7 +178,10 @@ INSERT IGNORE INTO configuracion_negocio (
   telefono,
   rfc,
   mensaje_ticket,
-  mostrar_camion_ticket
+  mensaje_presupuesto,
+  mensaje_pdf,
+  mostrar_camion_ticket,
+  icono_ticket
 ) VALUES (
   1,
   'Casa de Materiales El Constructor',
@@ -183,7 +189,10 @@ INSERT IGNORE INTO configuracion_negocio (
   'Tel. 555-234-8910',
   'RFC: CME240101AB1',
   'Gracias por su compra. Conserve este comprobante para cualquier aclaracion.',
-  1
+  'Cotizacion informativa. No valido como comprobante de pago ni descuenta inventario. Precios sujetos a cambio sin previo aviso.',
+  'Gracias por su compra. Documento digital emitido por el establecimiento para referencia y control del cliente.',
+  1,
+  'camion_volteo'
 );
 
 CREATE TABLE IF NOT EXISTS entregas_programadas (

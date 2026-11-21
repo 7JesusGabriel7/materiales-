@@ -19,7 +19,7 @@ function extraerNombreArchivo(cabecera, fallback) {
   return fallback;
 }
 
-async function descargarArchivoPdf(url, nombreFallback, boton = null) {
+async function descargarArchivoPdf(url, nombreFallback, boton = null, fetchOpciones = {}) {
   const textoOriginal = boton ? boton.textContent : '';
   if (boton) {
     boton.disabled = true;
@@ -28,10 +28,12 @@ async function descargarArchivoPdf(url, nombreFallback, boton = null) {
 
   try {
     const response = await fetch(url, {
-      method: 'GET',
+      method: fetchOpciones.method || 'GET',
       headers: {
-        Accept: 'application/pdf'
-      }
+        Accept: 'application/pdf',
+        ...(fetchOpciones.body ? { 'Content-Type': 'application/json' } : {})
+      },
+      ...(fetchOpciones.body ? { body: fetchOpciones.body } : {})
     });
 
     if (!response.ok) {
@@ -95,3 +97,11 @@ export function descargarPresupuestoPdf(presupuestoId, folio = '', boton = null)
   );
 }
 
+export function descargarPdfEjemploConfig({ tipo = 'venta', negocio = {}, boton = null }) {
+  const fallback =
+    tipo === 'presupuesto' ? 'Ejemplo-Presupuesto.pdf' : 'Ejemplo-Nota-Venta.pdf';
+  return descargarArchivoPdf('/api/config/pdf-ejemplo', fallback, boton, {
+    method: 'POST',
+    body: JSON.stringify({ tipo, negocio })
+  });
+}

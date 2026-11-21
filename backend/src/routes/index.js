@@ -13,6 +13,7 @@ const router = express.Router();
 router.get('/health', configController.obtenerSalud);
 router.get('/config', configController.obtenerConfiguracion);
 router.put('/config', configController.actualizarConfiguracion);
+router.post('/config/pdf-ejemplo', configController.generarPdfEjemplo);
 
 router.use('/categorias', categoriasRoutes);
 router.use('/productos', productosRoutes);

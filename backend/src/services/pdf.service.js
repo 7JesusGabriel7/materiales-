@@ -97,11 +97,7 @@ function extraerHoraTexto(valor) {
   return coincidencia ? coincidencia[1] : '-';
 }
 
-function dibujarCamionVolteo(doc, x, y, escala = 0.42) {
-  doc.save();
-  doc.translate(x, y);
-  doc.scale(escala);
-
+function dibujarCamionVolteoSvgEnPdf(doc) {
   doc.path('M16 18 C24 8, 42 7, 54 11 C65 7, 78 10, 86 18 Z')
     .fillColor(COLORES.negro)
     .fill();
@@ -128,14 +124,194 @@ function dibujarCamionVolteo(doc, x, y, escala = 0.42) {
     .fillColor(COLORES.negro)
     .fill();
 
-  doc.roundedRect(10, 37, 121, 5, 1)
-    .fillColor(COLORES.negro)
-    .fill();
+  doc.roundedRect(10, 37, 121, 5, 1).fillColor(COLORES.negro).fill();
 
   [29, 49, 111].forEach((cx) => {
     doc.circle(cx, 46, 8).fillColor(COLORES.negro).fill();
     doc.circle(cx, 46, 3).fillColor(COLORES.blanco).fill();
   });
+}
+
+function dibujarCamionPlataformaPdf(doc) {
+  // Tarima izquierda con blocks apilados
+  doc.rect(16, 33, 30, 3).fillColor(COLORES.negro).fill();
+  doc.rect(17, 15, 28, 17).lineWidth(1.8).fillAndStroke(COLORES.blanco, COLORES.negro);
+  [21, 27].forEach((py) => {
+    doc.moveTo(17, py).lineTo(45, py).lineWidth(1.4).strokeColor(COLORES.negro).stroke();
+  });
+  [
+    [26, 15, 21],
+    [35, 15, 21],
+    [31, 21, 27],
+    [26, 27, 33],
+    [35, 27, 33]
+  ].forEach(([px, y1, y2]) => {
+    doc.moveTo(px, y1).lineTo(px, y2).lineWidth(1.2).strokeColor(COLORES.negro).stroke();
+  });
+
+  // Tarima derecha con bultos apilados
+  doc.rect(50, 33, 28, 3).fillColor(COLORES.negro).fill();
+  doc.roundedRect(51, 26, 26, 6, 2).lineWidth(1.5).fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.roundedRect(51, 19, 26, 6, 2).lineWidth(1.5).fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.roundedRect(54, 12, 20, 6, 2).lineWidth(1.5).fillAndStroke(COLORES.blanco, COLORES.negro);
+
+  // Protector de cabina y cama plana
+  doc.rect(82, 12, 4, 25).fillColor(COLORES.negro).fill();
+  doc.rect(11, 36, 77, 4).fillColor(COLORES.negro).fill();
+
+  // Cabina de carga
+  doc.path('M89 20 L114 20 L126 29 L128 41 L89 41 Z')
+    .lineWidth(2)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+
+  doc.path('M94 23 L112 23 L120 29 L94 29 Z').fillColor(COLORES.negro).fill();
+  doc.roundedRect(10, 38, 121, 4, 1).fillColor(COLORES.negro).fill();
+
+  [28, 48, 110].forEach((cx) => {
+    doc.circle(cx, 46, 8).fillColor(COLORES.negro).fill();
+    doc.circle(cx, 46, 3).fillColor(COLORES.blanco).fill();
+  });
+}
+
+function dibujarCamionRevolvedoraPdf(doc) {
+  // Tolva y canalon trasero
+  doc.path('M14 14 L26 14 L28 24 L18 27 Z').fillColor(COLORES.negro).fill();
+  doc.path('M10 27 L20 24 L21 28 L11 31 Z').fillColor(COLORES.negro).fill();
+
+  // Trompo mezclador inclinado
+  doc.path('M22 25 L34 14 L64 9 L85 16 L85 32 L64 36 L27 33 Z')
+    .lineWidth(2)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+
+  [
+    [38, 14, 46, 34],
+    [53, 10, 62, 36],
+    [70, 12, 76, 34]
+  ].forEach(([x1, y1, x2, y2]) => {
+    doc.moveTo(x1, y1).lineTo(x2, y2).lineWidth(1.8).strokeColor(COLORES.negro).stroke();
+  });
+
+  // Soportes y tanque auxiliar
+  doc.path('M26 32 L34 32 L36 38 L24 38 Z').fillColor(COLORES.negro).fill();
+  doc.rect(84, 15, 5, 22).fillColor(COLORES.negro).fill();
+  doc.path('M72 34 L84 34 L84 38 L70 38 Z').fillColor(COLORES.negro).fill();
+
+  // Cabina y chasis
+  doc.path('M91 21 L114 21 L126 30 L128 42 L91 42 Z')
+    .lineWidth(2)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.path('M96 24 L112 24 L120 30 L96 30 Z').fillColor(COLORES.negro).fill();
+  doc.roundedRect(14, 37, 117, 5, 1).fillColor(COLORES.negro).fill();
+
+  [31, 51, 111].forEach((cx) => {
+    doc.circle(cx, 46, 8).fillColor(COLORES.negro).fill();
+    doc.circle(cx, 46, 3).fillColor(COLORES.blanco).fill();
+  });
+}
+
+function dibujarRetroexcavadoraPdf(doc) {
+  // Estabilizador trasero y brazo retroexcavador izquierdo
+  doc.path('M44 38 L39 50 L44 50 L48 39 Z').fillColor(COLORES.negro).fill();
+  doc.path('M44 35 L33 10 L38 8 L49 32 Z').fillColor(COLORES.negro).fill();
+  doc.path('M35 9 L19 25 L23 28 L38 13 Z')
+    .lineWidth(1.8)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.path('M19 25 L10 30 L12 39 L23 36 L22 28 Z').fillColor(COLORES.negro).fill();
+
+  // Chasis, cofre y escape
+  doc.rect(46, 33, 48, 9).fillColor(COLORES.negro).fill();
+  doc.path('M68 22 L92 24 L94 34 L68 34 Z')
+    .lineWidth(1.8)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.rect(77, 17, 3, 6).fillColor(COLORES.negro).fill();
+
+  // Cabina alta
+  doc.path('M46 11 L68 11 L70 34 L44 34 Z')
+    .lineWidth(2)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.path('M49 14 L65 14 L66 25 L48 25 Z').fillColor(COLORES.negro).fill();
+
+  // Brazo cargador frontal y pala derecha
+  doc.path('M66 27 L98 20 L108 38 L103 40 L95 25 L66 32 Z')
+    .lineWidth(1.6)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.path('M107 34 L125 41 L127 48 L104 48 L104 37 Z').fillColor(COLORES.negro).fill();
+
+  // Rueda trasera grande y delantera mediana
+  doc.circle(54, 42, 11).fillColor(COLORES.negro).fill();
+  doc.circle(54, 42, 4.5).fillColor(COLORES.blanco).fill();
+  doc.circle(88, 45, 8).fillColor(COLORES.negro).fill();
+  doc.circle(88, 45, 3).fillColor(COLORES.blanco).fill();
+}
+
+function dibujarExcavadoraOrugasPdf(doc) {
+  // Tren de orugas
+  doc.roundedRect(22, 40, 68, 13, 6).fillColor(COLORES.negro).fill();
+  doc.roundedRect(26, 43, 60, 7, 3).fillColor(COLORES.blanco).fill();
+  [31, 45, 59, 77].forEach((cx) => {
+    doc.circle(cx, 46.5, 2.5).fillColor(COLORES.negro).fill();
+  });
+
+  // Base giratoria
+  doc.rect(42, 36, 26, 5).fillColor(COLORES.negro).fill();
+
+  // Contrapeso trasero y cabina
+  doc.path('M24 21 L52 21 L52 36 L24 36 C20 36, 20 21, 24 21 Z')
+    .lineWidth(2)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.rect(22, 23, 8, 12).fillColor(COLORES.negro).fill();
+
+  doc.path('M52 13 L73 13 L77 36 L52 36 Z')
+    .lineWidth(2)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.path('M55 16 L70 16 L73 27 L55 27 Z').fillColor(COLORES.negro).fill();
+
+  // Pluma hidraulica, brazo y cucharon
+  doc.path('M72 28 L93 8 L100 11 L77 34 Z')
+    .lineWidth(1.8)
+    .lineJoin('round')
+    .fillAndStroke(COLORES.blanco, COLORES.negro);
+  doc.moveTo(76, 22).lineTo(89, 14).lineWidth(1.6).strokeColor(COLORES.negro).stroke();
+  doc.path('M95 9 L111 33 L105 35 L91 12 Z').fillColor(COLORES.negro).fill();
+  doc.path('M107 34 L123 36 L126 46 L112 49 L104 42 Z').fillColor(COLORES.negro).fill();
+}
+
+function dibujarIlustracionDocumento(doc, icono, x, y, escala = 0.42) {
+  if (!icono || icono === 'ninguno') {
+    return;
+  }
+
+  doc.save();
+  doc.translate(x, y);
+  doc.scale(escala);
+
+  switch (icono) {
+    case 'camion_plataforma':
+      dibujarCamionPlataformaPdf(doc);
+      break;
+    case 'camion_revolvedora':
+      dibujarCamionRevolvedoraPdf(doc);
+      break;
+    case 'retroexcavadora':
+      dibujarRetroexcavadoraPdf(doc);
+      break;
+    case 'excavadora_orugas':
+      dibujarExcavadoraOrugasPdf(doc);
+      break;
+    case 'camion_volteo':
+    default:
+      dibujarCamionVolteoSvgEnPdf(doc);
+      break;
+  }
 
   doc.moveTo(4, 55)
     .lineTo(136, 55)
@@ -155,16 +331,18 @@ function dibujarEncabezadoDocumento(doc, { negocio, tituloDoc, folio, fechaStr, 
   dibujarFranjaSuperior(doc);
 
   const yInicio = 24;
-  const mostrarCamion = negocio.mostrarCamionTicket !== false;
+  const iconoActivo =
+    negocio.iconoTicket ||
+    (negocio.mostrarCamionTicket === false ? 'ninguno' : 'camion_volteo');
   let xTextoNegocio = MARGEN;
   let anchoTextoNegocio = 334;
-  let yFinCamion = yInicio;
+  let yFinIlustracion = yInicio;
 
-  if (mostrarCamion) {
-    dibujarCamionVolteo(doc, MARGEN, yInicio + 2, 0.42);
+  if (iconoActivo !== 'ninguno') {
+    dibujarIlustracionDocumento(doc, iconoActivo, MARGEN, yInicio + 2, 0.42);
     xTextoNegocio = MARGEN + 68;
     anchoTextoNegocio = 266;
-    yFinCamion = yInicio + 28;
+    yFinIlustracion = yInicio + 28;
   }
 
   const nombreNegocio = limpiarTexto(negocio.nombre) || 'Casa de Materiales';
@@ -218,7 +396,7 @@ function dibujarEncabezadoDocumento(doc, { negocio, tituloDoc, folio, fechaStr, 
     });
   }
 
-  const yBase = Math.max(yNeg, yFinCamion, yInicio + cajaAlto) + 12;
+  const yBase = Math.max(yNeg, yFinIlustracion, yInicio + cajaAlto) + 12;
   doc.moveTo(MARGEN, yBase)
     .lineTo(MARGEN + ANCHO_CONTENIDO, yBase)
     .lineWidth(1)
@@ -568,7 +746,10 @@ async function generarPdfNotaVenta({ venta, detalle = [], entrega = null, negoci
     });
 
     dibujarPieDocumento(doc, y, {
-      mensajePrincipal: negocio.mensajeTicket || 'Gracias por su compra.',
+      mensajePrincipal:
+        negocio.mensajePdf ||
+        negocio.mensajeTicket ||
+        'Gracias por su compra.',
       referenciaFolio: `Folio ${venta.folio}`,
       lineaFirma: Boolean(entrega)
     });
@@ -627,6 +808,7 @@ async function generarPdfPresupuesto({ presupuesto, detalle = [], negocio = {} }
 
     dibujarPieDocumento(doc, y, {
       mensajePrincipal:
+        negocio.mensajePresupuesto ||
         'Cotizacion informativa. No valido como comprobante de pago ni descuenta inventario. Precios sujetos a cambio sin previo aviso.',
       referenciaFolio: `Presupuesto ${presupuesto.folio}`,
       lineaFirma: false

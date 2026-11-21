@@ -161,15 +161,18 @@ CREATE TABLE IF NOT EXISTS movimientos_inventario (
   CONSTRAINT chk_mov_stock CHECK (stock_anterior >= 0 AND stock_nuevo >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. Configuracion del establecimiento para encabezado y ticket
+-- 6. Configuracion del establecimiento para encabezado, tickets y PDFs
 CREATE TABLE IF NOT EXISTS configuracion_negocio (
   id TINYINT UNSIGNED NOT NULL,
   nombre VARCHAR(150) NOT NULL,
   direccion VARCHAR(255) NULL,
   telefono VARCHAR(60) NULL,
   rfc VARCHAR(60) NULL,
-  mensaje_ticket VARCHAR(255) NULL,
+  mensaje_ticket VARCHAR(500) NULL,
+  mensaje_presupuesto VARCHAR(500) NULL,
+  mensaje_pdf VARCHAR(500) NULL,
   mostrar_camion_ticket TINYINT(1) NOT NULL DEFAULT 1,
+  icono_ticket VARCHAR(40) NOT NULL DEFAULT 'camion_volteo',
   fecha_modificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

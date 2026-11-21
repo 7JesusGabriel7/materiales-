@@ -36,11 +36,17 @@ Principales variables en `.env`:
 
 ## Comandos de Docker Compose
 
-### Iniciar todo el sistema
+### Iniciar todo el sistema y arranque automatico
 Construye las imagenes si no existen e inicia los contenedores en segundo plano (`db`, `backend` y `frontend`):
 
 ```bash
 docker compose up -d
+```
+
+Los tres servicios estan configurados con `restart: always`, por lo que ante un reinicio, apagado o corte de luz vuelven a levantarse automaticamente sin intervencion manual. En instalaciones nuevas de Linux, asegurese una sola vez de que el demonio de Docker arranque con el sistema operativo:
+
+```bash
+sudo systemctl enable docker
 ```
 
 Al finalizar el arranque, abra el sistema en el navegador en:
@@ -121,14 +127,14 @@ docker compose exec -T db sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "
 4. **Productos**: Vista en tarjetas, alta, edicion, eliminacion o desactivacion segura, categorias personalizables, 7 unidades de medida y opcion de productos sin control de stock.
 5. **Inventario**: Resumen de productos activos, alertas de pocas existencias y agotados, registro de entradas, salidas manuales y ajustes, y bitacora completa de movimientos.
 6. **Historial de ventas**: Resumen de ventas de hoy y del dia anterior, filtros por periodo o folio, detalle con precios historicos inmutables, reimpresion de ticket de 58 mm y descarga de nota de venta en PDF.
-7. **Configuracion**: Edicion en vivo de nombre, direccion, telefono, RFC, mensaje del ticket e ilustracion del camion de volteo para tickets y PDFs.
+7. **Configuracion**: Edicion en vivo de nombre, direccion, telefono, RFC, mensajes independientes para ticket de venta (58 mm), presupuestos y notas PDF, ademas del selector de ilustracion (3 modelos de camion, 2 maquinas de excavar o solo texto) con vista previa y descarga de PDF de prueba.
 
 ---
 
 ## Endpoints Principales de la API
 
 - `GET /api/health`: Estado del servidor y conexion a MySQL.
-- `GET / PUT /api/config`: Datos del establecimiento y unidades de medida.
+- `GET / PUT /api/config`, `POST /api/config/pdf-ejemplo`: Datos del establecimiento, catalogo de ilustraciones, mensajes y PDF de prueba.
 - `GET / POST / PUT / DELETE /api/categorias`: Administracion de categorias.
 - `GET / POST / PUT / DELETE /api/productos`: Administracion de catalogo.
 - `GET / POST / PUT / DELETE /api/clientes`: Directorio de clientes.

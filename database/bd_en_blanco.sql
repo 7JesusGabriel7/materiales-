@@ -80,8 +80,11 @@ CREATE TABLE `configuracion_negocio` (
   `direccion` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `telefono` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `rfc` varchar(60) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `mensaje_ticket` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `mensaje_ticket` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `mensaje_presupuesto` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `mensaje_pdf` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `mostrar_camion_ticket` tinyint(1) NOT NULL DEFAULT '1',
+  `icono_ticket` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'camion_volteo',
   `fecha_modificacion` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
