@@ -1,0 +1,186 @@
+.print-ticket-container {
+  display: none;
+}
+
+.ticket-preview-wrapper {
+  display: flex;
+  justify-content: center;
+  background-color: #eef1f5;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.ticket-58mm {
+  width: 58mm;
+  max-width: 100%;
+  background-color: #ffffff;
+  color: #000000;
+  padding: 4mm 3mm;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.35;
+  border: 1px solid #d5dbe3;
+}
+
+.ticket-header {
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.ticket-truck-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.ticket-truck-svg {
+  width: 34mm;
+  height: auto;
+  display: block;
+  color: #000000;
+}
+
+.ticket-business-name {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.ticket-business-line {
+  font-size: 10px;
+  word-break: break-word;
+}
+
+.ticket-divider {
+  border-top: 1px dashed #000000;
+  margin: 6px 0;
+}
+
+.ticket-meta {
+  font-size: 10.5px;
+}
+
+.ticket-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.ticket-items {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+}
+
+.ticket-items th {
+  text-align: left;
+  border-bottom: 1px solid #000000;
+  padding: 2px 0;
+  font-size: 10px;
+}
+
+.ticket-items td {
+  padding: 3px 0;
+  vertical-align: top;
+}
+
+.ticket-item-name {
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.ticket-item-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+
+.ticket-totals {
+  font-size: 11px;
+}
+
+.ticket-total-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.ticket-grand-total {
+  font-size: 12.5px;
+  font-weight: 700;
+  margin: 4px 0;
+}
+
+.ticket-footer {
+  text-align: center;
+  font-size: 10px;
+  margin-top: 6px;
+  word-break: break-word;
+}
+
+.ticket-doc-type {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  border: 1px solid #000000;
+  padding: 2px 4px;
+  margin: 4px 0;
+  text-transform: uppercase;
+}
+
+.ticket-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.ticket-note-box {
+  font-size: 10px;
+  word-break: break-word;
+}
+
+@page {
+  size: 58mm auto;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    width: 58mm;
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+  }
+
+  #app-shell,
+  #modal-root,
+  #toast-container {
+    display: none !important;
+  }
+
+  #print-ticket-container {
+    display: block !important;
+    width: 58mm;
+    margin: 0;
+    padding: 0;
+  }
+
+  #print-ticket-container .ticket-58mm {
+    width: 54mm;
+    margin: 0 auto;
+    padding: 2mm 1mm;
+    border: 0;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #print-ticket-container .ticket-truck-svg {
+    width: 32mm;
+  }
+}
+
