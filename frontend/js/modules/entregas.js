@@ -499,7 +499,8 @@ export function crearModuloEntregas({ onEntregasModificadas }) {
   async function abrirModalNotaVenta(entregaId) {
     try {
       const datos = await api.get(`/entregas/${entregaId}`);
-      const { entrega, venta, detalle, negocio } = datos;
+      const { entrega, venta, detalle, pagos, negocio } = datos;
+      const saldoPendiente = Number(venta.saldo_pendiente || 0);
 
       const filas = (detalle || [])
         .map(
@@ -545,6 +546,11 @@ export function crearModuloEntregas({ onEntregasModificadas }) {
               <div><strong>Direccion:</strong> ${escaparHtml(entrega.direccion_entrega || '-')}</div>
               ${entrega.referencias ? `<div><strong>Referencias:</strong> ${escaparHtml(entrega.referencias)}</div>` : ''}
               ${entrega.horario_entrega ? `<div><strong>Horario:</strong> ${escaparHtml(entrega.horario_entrega)}</div>` : ''}
+              ${
+                saldoPendiente > 0
+                  ? `<div><strong>Saldo pendiente por cobrar:</strong> <strong class="num" style="color:var(--warning-text);">${formatearMoneda(saldoPendiente)}</strong> (Pagado: ${formatearMoneda(venta.monto_pagado)})</div>`
+                  : ''
+              }
               <div><strong>Nota de la venta:</strong> ${escaparHtml(entrega.nota_entrega || venta.nota_venta || 'Sin notas')}</div>
             </div>
 
@@ -587,6 +593,7 @@ export function crearModuloEntregas({ onEntregasModificadas }) {
           venta,
           detalle,
           entrega,
+          pagos: pagos || [],
           negocio,
           titulo: `Reimpresion de ticket ${venta.folio}`
         });

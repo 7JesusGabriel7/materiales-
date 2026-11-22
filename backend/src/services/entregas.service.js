@@ -161,12 +161,17 @@ async function obtenerEntregaPorId(id) {
     'SELECT * FROM detalle_ventas WHERE venta_id = ? ORDER BY id ASC',
     [entrega.venta_id]
   );
+  const [pagosRows] = await pool.query(
+    'SELECT * FROM pagos_venta WHERE venta_id = ? ORDER BY fecha_pago ASC, id ASC',
+    [entrega.venta_id]
+  );
   const negocio = await configuracionService.obtenerConfiguracionNegocio();
 
   return {
     entrega,
     venta: ventaRows[0],
     detalle: detalleRows,
+    pagos: pagosRows,
     negocio
   };
 }

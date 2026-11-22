@@ -177,16 +177,45 @@ function construirFilasPartidas(detalle) {
     .join('');
 }
 
-export function generarHtmlTicket58mm({ venta, detalle, entrega = null, negocio }) {
+const ETIQUETAS_TIPO_PAGO_TICKET = {
+  ANTICIPO: 'Anticipo',
+  ABONO: 'Abono',
+  LIQUIDACION: 'Liquidacion'
+};
+
+export function generarHtmlTicket58mm({
+  venta,
+  detalle,
+  entrega = null,
+  pagos = [],
+  negocio
+}) {
   const infoNegocio = negocio || {};
   const clienteNombre = entrega?.cliente_nombre || venta.cliente_nombre || '';
+  const nombreAsignado = venta.nombre_pendiente || '';
   const clienteTelefono = entrega?.cliente_telefono || venta.cliente_telefono || '';
   const clienteDireccion = entrega?.direccion_entrega || venta.cliente_direccion || '';
   const referencias = entrega?.referencias || '';
   const nota = venta.nota_venta || entrega?.nota_entrega || '';
 
+  const saldoPendiente = Number(venta.saldo_pendiente || 0);
+  const esParcial =
+    Boolean(Number(venta.es_pago_parcial)) ||
+    venta.estado_pago === 'PENDIENTE' ||
+    saldoPendiente > 0;
+  const totalNum = Number(venta.total || 0);
+  const montoPagado = esParcial ? Number(venta.monto_pagado || 0) : totalNum;
+  const pctPagado =
+    totalNum > 0 ? Math.round((montoPagado / totalNum) * 10000) / 100 : 100;
+
+  const bandaEstadoPago = esParcial
+    ? `<div class="ticket-doc-type">${
+        saldoPendiente > 0 ? 'NOTA CON SALDO PENDIENTE' : 'NOTA LIQUIDADA'
+      }</div>`
+    : '';
+
   const bloqueClienteEntrega =
-    venta.tipo_venta === 'CLIENTE' || clienteNombre || entrega
+    venta.tipo_venta === 'CLIENTE' || clienteNombre || entrega || clienteTelefono
       ? `
         <div class="ticket-divider"></div>
         <div class="ticket-meta">
@@ -212,9 +241,69 @@ export function generarHtmlTicket58mm({ venta, detalle, entrega = null, negocio 
     `
     : '';
 
+  const bloquePagos =
+    esParcial && Array.isArray(pagos) && pagos.length > 0
+      ? `
+        <div class="ticket-divider"></div>
+        <div class="ticket-meta">
+          <div class="ticket-section-title">Pagos registrados</div>
+          ${pagos
+            .map(
+              (p) => `
+              <div class="ticket-meta-row">
+                <span>${formatearFecha(p.fecha_pago)} ${escaparHtml(ETIQUETAS_TIPO_PAGO_TICKET[p.tipo] || p.tipo)}</span>
+                <strong>${formatearMoneda(p.monto)}</strong>
+              </div>
+            `
+            )
+            .join('')}
+        </div>
+      `
+      : '';
+
+  const bloqueTotalesDetalle = esParcial
+    ? `
+        <div class="ticket-total-row">
+          <span>Pagado (${pctPagado}%):</span>
+          <span>${formatearMoneda(montoPagado)}</span>
+        </div>
+        <div class="ticket-total-row ticket-grand-total">
+          <span>${saldoPendiente > 0 ? 'SALDO PENDIENTE:' : 'SALDO RESTANTE:'}</span>
+          <span>${formatearMoneda(saldoPendiente)}</span>
+        </div>
+        ${
+          Number(venta.dinero_recibido) > 0
+            ? `<div class="ticket-total-row">
+                <span>Recibido (anticipo):</span>
+                <span>${formatearMoneda(venta.dinero_recibido)}</span>
+              </div>`
+            : ''
+        }
+        ${
+          Number(venta.cambio) > 0
+            ? `<div class="ticket-total-row">
+                <span>Cambio (anticipo):</span>
+                <span>${formatearMoneda(venta.cambio)}</span>
+              </div>`
+            : ''
+        }
+      `
+    : `
+        <div class="ticket-total-row">
+          <span>Recibido:</span>
+          <span>${formatearMoneda(venta.dinero_recibido)}</span>
+        </div>
+        <div class="ticket-total-row">
+          <span>Cambio:</span>
+          <span>${formatearMoneda(venta.cambio)}</span>
+        </div>
+      `;
+
   return `
     <div class="ticket-58mm">
       ${construirEncabezadoNegocio(infoNegocio)}
+
+      ${bandaEstadoPago}
 
       <div class="ticket-divider"></div>
 
@@ -227,6 +316,14 @@ export function generarHtmlTicket58mm({ venta, detalle, entrega = null, negocio 
           <span>Tipo:</span>
           <span>${venta.tipo_venta === 'CLIENTE' ? 'Con cliente' : 'Venta general'}</span>
         </div>
+        ${
+          nombreAsignado
+            ? `<div class="ticket-meta-row">
+                <span>A nombre de:</span>
+                <strong>${escaparHtml(nombreAsignado)}</strong>
+              </div>`
+            : ''
+        }
         <div class="ticket-meta-row">
           <span>Fecha:</span>
           <span>${formatearFecha(venta.fecha_venta)}</span>
@@ -264,15 +361,10 @@ export function generarHtmlTicket58mm({ venta, detalle, entrega = null, negocio 
           <span>TOTAL:</span>
           <span>${formatearMoneda(venta.total)}</span>
         </div>
-        <div class="ticket-total-row">
-          <span>Recibido:</span>
-          <span>${formatearMoneda(venta.dinero_recibido)}</span>
-        </div>
-        <div class="ticket-total-row">
-          <span>Cambio:</span>
-          <span>${formatearMoneda(venta.cambio)}</span>
-        </div>
+        ${bloqueTotalesDetalle}
       </div>
+
+      ${bloquePagos}
 
       ${bloqueNota}
 
@@ -420,10 +512,11 @@ export function mostrarModalTicket({
   venta,
   detalle,
   entrega = null,
+  pagos = [],
   negocio,
   titulo = 'Comprobante de venta (58 mm)'
 }) {
-  const ticketHtml = generarHtmlTicket58mm({ venta, detalle, entrega, negocio });
+  const ticketHtml = generarHtmlTicket58mm({ venta, detalle, entrega, pagos, negocio });
   abrirVentanaImpresion(ticketHtml, titulo, {
     onDescargarPdf: venta?.id
       ? (boton) => descargarNotaVentaPdf(venta.id, venta.folio, boton)

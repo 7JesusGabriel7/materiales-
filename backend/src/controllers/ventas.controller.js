@@ -28,6 +28,40 @@ const obtener = asyncHandler(async (req, res) => {
   res.json({ ok: true, ...resultado });
 });
 
+const resumenPorCobrar = asyncHandler(async (req, res) => {
+  const resumenDatos = await ventasService.obtenerResumenPorCobrar();
+  res.json({ ok: true, resumen: resumenDatos });
+});
+
+const listarPorCobrar = asyncHandler(async (req, res) => {
+  const resultado = await ventasService.listarCuentasPorCobrar(req.query);
+  res.json({ ok: true, ...resultado });
+});
+
+const asignarNombre = asyncHandler(async (req, res) => {
+  const id = parsearEnteroPositivo(req.params.id, 'id');
+  const resultado = await ventasService.asignarNombreVenta(id, req.body || {});
+  res.json({
+    ok: true,
+    mensaje: `Nombre asignado correctamente a la nota ${resultado.venta.folio}.`,
+    ...resultado
+  });
+});
+
+const registrarAbono = asyncHandler(async (req, res) => {
+  const id = parsearEnteroPositivo(req.params.id, 'id');
+  const resultado = await ventasService.registrarAbonoVenta(id, req.body || {});
+  const mensaje =
+    resultado.venta.estado_pago === 'PAGADA'
+      ? `Nota ${resultado.venta.folio} liquidada en su totalidad.`
+      : `Abono registrado. Saldo pendiente: $${Number(resultado.venta.saldo_pendiente).toFixed(2)}.`;
+  res.status(201).json({
+    ok: true,
+    mensaje,
+    ...resultado
+  });
+});
+
 const descargarPdf = asyncHandler(async (req, res) => {
   const id = parsearEnteroPositivo(req.params.id, 'id');
   const resultado = await ventasService.obtenerVentaPorId(id);
@@ -50,6 +84,10 @@ module.exports = {
   resumen,
   listar,
   obtener,
+  resumenPorCobrar,
+  listarPorCobrar,
+  asignarNombre,
+  registrarAbono,
   descargarPdf
 };
 

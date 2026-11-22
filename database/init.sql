@@ -86,6 +86,12 @@ CREATE TABLE IF NOT EXISTS ventas (
   total DECIMAL(12,2) NOT NULL,
   dinero_recibido DECIMAL(12,2) NOT NULL,
   cambio DECIMAL(12,2) NOT NULL,
+  estado_pago ENUM('PAGADA', 'PENDIENTE') NOT NULL DEFAULT 'PAGADA',
+  es_pago_parcial TINYINT(1) NOT NULL DEFAULT 0,
+  porcentaje_anticipo DECIMAL(5,2) NOT NULL DEFAULT 100.00,
+  monto_pagado DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  saldo_pendiente DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  nombre_pendiente VARCHAR(150) NULL,
   estado ENUM('COMPLETADA', 'CANCELADA') NOT NULL DEFAULT 'COMPLETADA',
   PRIMARY KEY (id),
   UNIQUE KEY uq_ventas_folio (folio),
@@ -93,12 +99,20 @@ CREATE TABLE IF NOT EXISTS ventas (
   KEY idx_ventas_estado_fecha (estado, fecha_venta),
   KEY idx_ventas_cliente (cliente_id),
   KEY idx_ventas_tipo (tipo_venta),
+  KEY idx_ventas_estado_pago (estado_pago, fecha_venta),
+  KEY idx_ventas_parcial (es_pago_parcial, estado_pago),
   CONSTRAINT fk_ventas_cliente
     FOREIGN KEY (cliente_id) REFERENCES clientes (id)
     ON UPDATE CASCADE
     ON DELETE SET NULL,
   CONSTRAINT chk_ventas_montos CHECK (
-    subtotal >= 0 AND total >= 0 AND dinero_recibido >= total AND cambio >= 0
+    subtotal >= 0
+    AND total >= 0
+    AND dinero_recibido >= 0
+    AND cambio >= 0
+    AND monto_pagado >= 0
+    AND saldo_pendiente >= 0
+    AND monto_pagado <= total
   )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -278,6 +292,33 @@ CREATE TABLE IF NOT EXISTS detalle_presupuestos (
     ON DELETE SET NULL,
   CONSTRAINT chk_det_pres_valores CHECK (
     cantidad >= 1 AND precio_unitario >= 0 AND importe >= 0
+  )
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pagos_venta (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  venta_id INT UNSIGNED NOT NULL,
+  tipo ENUM('ANTICIPO', 'ABONO', 'LIQUIDACION') NOT NULL DEFAULT 'ABONO',
+  monto DECIMAL(12,2) NOT NULL,
+  dinero_recibido DECIMAL(12,2) NOT NULL,
+  cambio DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  saldo_anterior DECIMAL(12,2) NOT NULL,
+  saldo_nuevo DECIMAL(12,2) NOT NULL,
+  nota VARCHAR(255) NULL,
+  fecha_pago DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_pagos_venta (venta_id),
+  KEY idx_pagos_fecha (fecha_pago),
+  CONSTRAINT fk_pagos_venta
+    FOREIGN KEY (venta_id) REFERENCES ventas (id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT,
+  CONSTRAINT chk_pagos_montos CHECK (
+    monto > 0
+    AND dinero_recibido >= monto
+    AND cambio >= 0
+    AND saldo_anterior >= 0
+    AND saldo_nuevo >= 0
   )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

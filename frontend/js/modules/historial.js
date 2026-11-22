@@ -230,13 +230,24 @@ export function crearModuloHistorial() {
     tbody.innerHTML = estado.ventas
       .map((v) => {
         const esCliente = v.tipo_venta === 'CLIENTE' || Boolean(v.cliente_nombre);
-        const clienteTexto = esCliente
-          ? `<div><strong>${escaparHtml(v.cliente_nombre || 'Cliente')}</strong></div>${
+        const nombreMostrar = v.cliente_nombre || v.nombre_pendiente || '';
+        const esSaldoPendiente =
+          v.estado_pago === 'PENDIENTE' && Number(v.saldo_pendiente) > 0;
+        const esParcial = Boolean(Number(v.es_pago_parcial)) || esSaldoPendiente;
+
+        const clienteTexto = esCliente || nombreMostrar
+          ? `<div><strong>${escaparHtml(nombreMostrar || 'Cliente')}</strong></div>${
               v.entrega_estado
                 ? `<div class="text-muted" style="font-size:11.5px;">Entrega (${formatearFecha(v.entrega_fecha)}): ${escaparHtml(v.entrega_estado)}</div>`
                 : ''
             }`
           : '<span class="text-muted">Venta general</span>';
+
+        const estadoPagoHtml = esSaldoPendiente
+          ? `<div style="margin-top:4px;"><span class="badge badge-warning">Por cobrar: ${formatearMoneda(v.saldo_pendiente)}</span></div>`
+          : esParcial
+            ? '<div style="margin-top:4px;"><span class="badge badge-neutral">Liquidada</span></div>'
+            : '';
 
         return `
         <tr>
@@ -249,12 +260,13 @@ export function crearModuloHistorial() {
           </td>
           <td class="text-right num">${v.cantidad_productos}</td>
           <td class="text-right num"><strong>${formatearMoneda(v.total)}</strong></td>
-          <td class="text-right num">${formatearMoneda(v.dinero_recibido)}</td>
+          <td class="text-right num">${formatearMoneda(esParcial ? v.monto_pagado : v.dinero_recibido)}</td>
           <td class="text-right num">${formatearMoneda(v.cambio)}</td>
           <td class="text-center">
             <span class="badge ${v.estado === 'COMPLETADA' ? 'badge-success' : 'badge-danger'}">
               ${escaparHtml(v.estado)}
             </span>
+            ${estadoPagoHtml}
           </td>
           <td class="text-center">
             <div class="row-actions">
@@ -328,7 +340,12 @@ export function crearModuloHistorial() {
   async function abrirDetalleVenta(ventaId) {
     try {
       const datos = await api.get(`/ventas/${ventaId}`);
-      const { venta, detalle, entrega, negocio } = datos;
+      const { venta, detalle, entrega, pagos, negocio } = datos;
+      const saldoPendiente = Number(venta.saldo_pendiente || 0);
+      const esParcial =
+        Boolean(Number(venta.es_pago_parcial)) ||
+        venta.estado_pago === 'PENDIENTE' ||
+        saldoPendiente > 0;
 
       const filasDetalle = (detalle || [])
         .map(
@@ -345,15 +362,60 @@ export function crearModuloHistorial() {
         .join('');
 
       const infoClienteNotaHtml =
-        venta.tipo_venta === 'CLIENTE' || venta.cliente_nombre || venta.nota_venta || entrega
+        venta.tipo_venta === 'CLIENTE' ||
+        venta.cliente_nombre ||
+        venta.nombre_pendiente ||
+        venta.nota_venta ||
+        entrega ||
+        esParcial
           ? `
             <div class="info-box">
               <div><strong>Tipo de venta:</strong> ${venta.tipo_venta === 'CLIENTE' ? 'Con cliente (Entrega programada)' : 'Venta general'}</div>
-              ${venta.cliente_nombre ? `<div><strong>Cliente:</strong> ${escaparHtml(venta.cliente_nombre)}</div>` : ''}
+              ${venta.nombre_pendiente ? `<div><strong>Nombre asignado:</strong> ${escaparHtml(venta.nombre_pendiente)}</div>` : ''}
+              ${venta.cliente_nombre && venta.cliente_nombre !== venta.nombre_pendiente ? `<div><strong>Cliente:</strong> ${escaparHtml(venta.cliente_nombre)}</div>` : ''}
               ${venta.cliente_telefono ? `<div><strong>Telefono:</strong> ${escaparHtml(venta.cliente_telefono)}</div>` : ''}
               ${venta.cliente_direccion ? `<div><strong>Direccion:</strong> ${escaparHtml(venta.cliente_direccion)}</div>` : ''}
               ${entrega ? `<div><strong>Entrega programada:</strong> ${formatearFecha(entrega.fecha_entrega)} (${escaparHtml(entrega.estado)})</div>` : ''}
+              ${
+                esParcial
+                  ? `<div><strong>Pago parcial:</strong> Pagado ${formatearMoneda(venta.monto_pagado)} | Saldo pendiente: <strong style="color:${saldoPendiente > 0 ? 'var(--warning-text)' : 'var(--success-text)'};">${formatearMoneda(saldoPendiente)}</strong></div>`
+                  : ''
+              }
               ${venta.nota_venta ? `<div><strong>Nota de la venta:</strong> ${escaparHtml(venta.nota_venta)}</div>` : ''}
+            </div>
+          `
+          : '';
+
+      const bloquePagosHtml =
+        esParcial && Array.isArray(pagos) && pagos.length > 0
+          ? `
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Fecha abono</th>
+                    <th>Tipo</th>
+                    <th>Nota</th>
+                    <th class="text-right">Monto</th>
+                    <th class="text-right">Saldo restante</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${pagos
+                    .map(
+                      (p) => `
+                      <tr>
+                        <td class="num">${formatearFechaHora(p.fecha_pago)}</td>
+                        <td>${escaparHtml(p.tipo)}</td>
+                        <td>${escaparHtml(p.nota || '-')}</td>
+                        <td class="text-right num"><strong>${formatearMoneda(p.monto)}</strong></td>
+                        <td class="text-right num">${formatearMoneda(p.saldo_nuevo)}</td>
+                      </tr>
+                    `
+                    )
+                    .join('')}
+                </tbody>
+              </table>
             </div>
           `
           : '';
@@ -411,14 +473,16 @@ export function crearModuloHistorial() {
                 <strong class="num" style="font-size:16px;">${formatearMoneda(venta.total)}</strong>
               </div>
               <div>
-                <div class="text-muted" style="font-size:12px;">Dinero recibido</div>
-                <strong class="num">${formatearMoneda(venta.dinero_recibido)}</strong>
+                <div class="text-muted" style="font-size:12px;">${esParcial ? 'Pagado acumulado' : 'Dinero recibido'}</div>
+                <strong class="num">${formatearMoneda(esParcial ? venta.monto_pagado : venta.dinero_recibido)}</strong>
               </div>
               <div>
-                <div class="text-muted" style="font-size:12px;">Cambio entregado</div>
-                <strong class="num">${formatearMoneda(venta.cambio)}</strong>
+                <div class="text-muted" style="font-size:12px;">${esParcial ? 'Saldo pendiente' : 'Cambio entregado'}</div>
+                <strong class="num">${formatearMoneda(esParcial ? venta.saldo_pendiente : venta.cambio)}</strong>
               </div>
             </div>
+
+            ${bloquePagosHtml}
           </div>
         `,
         footerHtml: `
@@ -442,6 +506,7 @@ export function crearModuloHistorial() {
           venta,
           detalle,
           entrega,
+          pagos: pagos || [],
           negocio,
           titulo: `Reimpresion de ticket ${venta.folio}`
         });
@@ -458,6 +523,7 @@ export function crearModuloHistorial() {
         venta: datos.venta,
         detalle: datos.detalle,
         entrega: datos.entrega,
+        pagos: datos.pagos || [],
         negocio: datos.negocio,
         titulo: `Reimpresion de ticket ${datos.venta.folio}`
       });

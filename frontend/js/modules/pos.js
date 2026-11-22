@@ -53,6 +53,11 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     categoriaId: '',
     vistaCatalogo: leerPreferenciaVistaCatalogo(),
     dineroRecibidoTexto: '',
+    modalidadPago: 'COMPLETO',
+    porcentajeAnticipoTexto: '50',
+    montoAnticipoTexto: '',
+    nombrePendiente: '',
+    telefonoPendiente: '',
     tipoVenta: 'GENERAL',
     busquedaCliente: '',
     clienteSeleccionado: null,
@@ -97,18 +102,40 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     }
 
     const total = subtotal;
+    const esParcial = estado.modalidadPago === 'PARCIAL';
+    const montoAntNum = Number(estado.montoAnticipoTexto);
+    const anticipoValido =
+      esParcial &&
+      estado.montoAnticipoTexto.trim() !== '' &&
+      Number.isFinite(montoAntNum) &&
+      montoAntNum > 0 &&
+      montoAntNum < total;
+    const montoAnticipo = anticipoValido ? redondearMoneda(montoAntNum) : 0;
+    const saldoPendiente =
+      esParcial && anticipoValido ? redondearMoneda(total - montoAnticipo) : 0;
+    const porcentajeAnticipo =
+      esParcial && anticipoValido && total > 0
+        ? Math.round((montoAnticipo / total) * 10000) / 100
+        : 100;
+
     const recibidoNum = Number(estado.dineroRecibidoTexto);
     const recibidoValido =
       estado.dineroRecibidoTexto.trim() !== '' &&
       Number.isFinite(recibidoNum) &&
       recibidoNum >= 0;
     const dineroRecibido = recibidoValido ? redondearMoneda(recibidoNum) : 0;
-    const diferencia = redondearMoneda(dineroRecibido - total);
+    const objetivoCobro = esParcial ? montoAnticipo : total;
+    const diferencia = redondearMoneda(dineroRecibido - objetivoCobro);
 
     return {
       subtotal,
       total,
       totalUnidades,
+      esParcial,
+      anticipoValido,
+      montoAnticipo,
+      saldoPendiente,
+      porcentajeAnticipo,
       recibidoValido,
       dineroRecibido,
       cambio: diferencia >= 0 ? diferencia : 0,
@@ -119,6 +146,11 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
   function limpiarDatosOperacion() {
     estado.carrito = [];
     estado.dineroRecibidoTexto = '';
+    estado.modalidadPago = 'COMPLETO';
+    estado.porcentajeAnticipoTexto = '50';
+    estado.montoAnticipoTexto = '';
+    estado.nombrePendiente = '';
+    estado.telefonoPendiente = '';
     estado.tipoVenta = 'GENERAL';
     estado.busquedaCliente = '';
     estado.clienteSeleccionado = null;
@@ -887,7 +919,16 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
           </div>
 
           <div class="checkout-pay-panel">
-            <div class="checkout-section-label">2. Resumen y pago en efectivo</div>
+            <div class="checkout-section-label">2. Modalidad y pago en efectivo</div>
+
+            <div class="chk-pay-tabs" role="group" aria-label="Modalidad de pago">
+              <button type="button" id="chk-mod-completo" class="chk-pay-tab">
+                Pago completo (100%)
+              </button>
+              <button type="button" id="chk-mod-parcial" class="chk-pay-tab">
+                Pago parcial (anticipo)
+              </button>
+            </div>
 
             <div class="pos-summary-row">
               <span>Partidas en carrito</span>
@@ -898,12 +939,74 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
               <strong class="num">${formatearMoneda(subtotal)}</strong>
             </div>
             <div class="pos-summary-row pos-summary-total">
-              <span>Total a cobrar</span>
+              <span>Total de la nota</span>
               <span class="num">${formatearMoneda(total)}</span>
             </div>
 
+            <div id="chk-panel-parcial" class="chk-partial-box hidden">
+              <div style="font-size:12px;font-weight:700;color:var(--text-secondary);">
+                Porcentaje o monto de anticipo
+              </div>
+              <div class="chk-pct-chips">
+                <button type="button" class="chk-pct-chip" data-chk-pct="25">25%</button>
+                <button type="button" class="chk-pct-chip" data-chk-pct="30">30%</button>
+                <button type="button" class="chk-pct-chip" data-chk-pct="50">50%</button>
+                <button type="button" class="chk-pct-chip" data-chk-pct="75">75%</button>
+              </div>
+              <div class="chk-partial-grid">
+                <div class="field">
+                  <label for="chk-pct-anticipo">Porcentaje (%)</label>
+                  <input
+                    type="text"
+                    id="chk-pct-anticipo"
+                    class="input num"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    value="${escaparHtml(estado.porcentajeAnticipoTexto)}"
+                    placeholder="50"
+                  >
+                </div>
+                <div class="field">
+                  <label for="chk-monto-anticipo">Anticipo a pagar ($)</label>
+                  <input
+                    type="text"
+                    id="chk-monto-anticipo"
+                    class="input num"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    value="${escaparHtml(estado.montoAnticipoTexto)}"
+                    placeholder="0.00"
+                  >
+                </div>
+              </div>
+              <div class="field">
+                <label for="chk-nombre-pendiente" id="chk-nombre-pendiente-label">
+                  Nombre asignado a la nota por cobrar
+                </label>
+                <input
+                  type="text"
+                  id="chk-nombre-pendiente"
+                  class="input"
+                  maxlength="150"
+                  value="${escaparHtml(estado.nombrePendiente)}"
+                  placeholder="Ej. Juan Perez - Obra Norte (puede asignarlo despues)"
+                >
+              </div>
+              <div class="field" id="chk-wrap-tel-pendiente">
+                <label for="chk-tel-pendiente">Telefono de contacto (opcional)</label>
+                <input
+                  type="text"
+                  id="chk-tel-pendiente"
+                  class="input"
+                  maxlength="60"
+                  value="${escaparHtml(estado.telefonoPendiente)}"
+                  placeholder="555-000-0000"
+                >
+              </div>
+            </div>
+
             <div class="field" style="margin-top:4px;">
-              <label for="chk-dinero-recibido">Dinero recibido del cliente</label>
+              <label for="chk-dinero-recibido" id="chk-label-recibido">Dinero recibido del cliente</label>
               <div class="pos-payment-input-row">
                 <input
                   type="text"
@@ -942,14 +1045,39 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     const panelCliente = root.querySelector('#chk-panel-cliente');
     const clienteDinamico = root.querySelector('#chk-cliente-dinamico');
     const inputNota = root.querySelector('#chk-nota-venta');
+    const btnModCompleto = root.querySelector('#chk-mod-completo');
+    const btnModParcial = root.querySelector('#chk-mod-parcial');
+    const panelParcial = root.querySelector('#chk-panel-parcial');
+    const inputPctAnticipo = root.querySelector('#chk-pct-anticipo');
+    const inputMontoAnticipo = root.querySelector('#chk-monto-anticipo');
+    const inputNombrePendiente = root.querySelector('#chk-nombre-pendiente');
+    const labelNombrePendiente = root.querySelector('#chk-nombre-pendiente-label');
+    const wrapTelPendiente = root.querySelector('#chk-wrap-tel-pendiente');
+    const inputTelPendiente = root.querySelector('#chk-tel-pendiente');
+    const labelRecibido = root.querySelector('#chk-label-recibido');
     const inputPago = root.querySelector('#chk-dinero-recibido');
     const btnExacto = root.querySelector('#chk-pago-exacto');
     const estadoPagoEl = root.querySelector('#chk-estado-pago');
     const btnConfirmar = root.querySelector('#chk-confirmar-venta');
 
+    function sincronizarChipsPorcentaje() {
+      const pctAct = Number(estado.porcentajeAnticipoTexto);
+      root.querySelectorAll('[data-chk-pct]').forEach((chip) => {
+        chip.classList.toggle(
+          'active',
+          Math.abs(Number(chip.dataset.chkPct) - pctAct) < 0.01
+        );
+      });
+    }
+
     function actualizarEstadoPagoModal() {
       const {
         total: tot,
+        esParcial,
+        anticipoValido,
+        montoAnticipo,
+        saldoPendiente,
+        porcentajeAnticipo,
         recibidoValido,
         dineroRecibido,
         cambio,
@@ -961,6 +1089,42 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         (Boolean(estado.clienteSeleccionado) &&
           estado.subvistaClienteModal === 'seleccionado' &&
           Boolean(estado.fechaEntrega));
+
+      if (esParcial) {
+        if (!anticipoValido) {
+          estadoPagoEl.className = 'pos-payment-status pos-payment-insufficient';
+          estadoPagoEl.innerHTML = `
+            <span>Anticipo requerido</span>
+            <span class="num">Mayor a $0 y menor a ${formatearMoneda(tot)}</span>
+          `;
+          btnConfirmar.disabled = true;
+          return;
+        }
+
+        if (!recibidoValido || dineroRecibido < montoAnticipo) {
+          estadoPagoEl.className = 'pos-payment-status pos-payment-insufficient';
+          estadoPagoEl.innerHTML = `
+            <span>Faltante para anticipo (${porcentajeAnticipo}%)</span>
+            <span class="num">${formatearMoneda(faltante)}</span>
+          `;
+          btnConfirmar.disabled = true;
+          return;
+        }
+
+        estadoPagoEl.className = 'pos-payment-status pos-payment-pending';
+        estadoPagoEl.innerHTML = `
+          <div class="pos-payment-pending-row">
+            <span>Saldo pendiente por cobrar</span>
+            <span class="num">${formatearMoneda(saldoPendiente)}</span>
+          </div>
+          <div class="pos-payment-pending-row" style="font-size:12.5px;font-weight:500;">
+            <span>${cambio > 0 ? 'Cambio por el anticipo' : `Anticipo cubierto (${porcentajeAnticipo}%)`}</span>
+            <span class="num">${cambio > 0 ? formatearMoneda(cambio) : formatearMoneda(montoAnticipo)}</span>
+          </div>
+        `;
+        btnConfirmar.disabled = estado.procesando || !clienteListo;
+        return;
+      }
 
       if (!recibidoValido || dineroRecibido < tot) {
         estadoPagoEl.className = 'pos-payment-status pos-payment-insufficient';
@@ -978,6 +1142,55 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         <span class="num">${formatearMoneda(cambio)}</span>
       `;
       btnConfirmar.disabled = estado.procesando || !clienteListo;
+    }
+
+    function sincronizarModalidadPagoModal() {
+      const esParcial = estado.modalidadPago === 'PARCIAL';
+      btnModCompleto?.classList.toggle('active', !esParcial);
+      btnModParcial?.classList.toggle('active', esParcial);
+      panelParcial?.classList.toggle('hidden', !esParcial);
+
+      if (esParcial) {
+        if (!estado.montoAnticipoTexto) {
+          const pctInicial = Number(estado.porcentajeAnticipoTexto) || 50;
+          const montoCalc = redondearMoneda((total * pctInicial) / 100);
+          estado.montoAnticipoTexto = montoCalc.toFixed(2);
+          if (inputMontoAnticipo) {
+            inputMontoAnticipo.value = estado.montoAnticipoTexto;
+          }
+        }
+        if (labelRecibido) {
+          labelRecibido.textContent = 'Dinero recibido por el anticipo';
+        }
+        if (btnExacto) {
+          btnExacto.textContent = 'Exacto anticipo';
+        }
+        if (btnConfirmar) {
+          btnConfirmar.textContent = 'Guardar nota con saldo pendiente';
+        }
+        const esCli = estado.tipoVenta === 'CLIENTE';
+        if (wrapTelPendiente) {
+          wrapTelPendiente.classList.toggle('hidden', esCli);
+        }
+        if (labelNombrePendiente) {
+          labelNombrePendiente.textContent = esCli
+            ? 'Nombre asignado (opcional; por defecto usa cliente)'
+            : 'Nombre asignado a la nota por cobrar (opcional)';
+        }
+        sincronizarChipsPorcentaje();
+      } else {
+        if (labelRecibido) {
+          labelRecibido.textContent = 'Dinero recibido del cliente';
+        }
+        if (btnExacto) {
+          btnExacto.textContent = 'Pago exacto';
+        }
+        if (btnConfirmar) {
+          btnConfirmar.textContent = 'Confirmar venta';
+        }
+      }
+
+      actualizarEstadoPagoModal();
     }
 
     function pintarSubvistaClienteModal() {
@@ -1433,7 +1646,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         }
         pintarSubvistaClienteModal();
       }
-      actualizarEstadoPagoModal();
+      sincronizarModalidadPagoModal();
     }
 
     btnGeneral.addEventListener('click', () => {
@@ -1444,6 +1657,92 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     btnCliente.addEventListener('click', () => {
       estado.tipoVenta = 'CLIENTE';
       sincronizarTipoVentaModal();
+    });
+
+    btnModCompleto?.addEventListener('click', () => {
+      estado.modalidadPago = 'COMPLETO';
+      sincronizarModalidadPagoModal();
+    });
+
+    btnModParcial?.addEventListener('click', () => {
+      estado.modalidadPago = 'PARCIAL';
+      const pct = Number(estado.porcentajeAnticipoTexto) || 50;
+      const calc = redondearMoneda((total * pct) / 100);
+      estado.montoAnticipoTexto = calc.toFixed(2);
+      if (inputMontoAnticipo) {
+        inputMontoAnticipo.value = estado.montoAnticipoTexto;
+      }
+      sincronizarModalidadPagoModal();
+    });
+
+    root.querySelectorAll('[data-chk-pct]').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const pct = Number(chip.dataset.chkPct);
+        estado.porcentajeAnticipoTexto = String(pct);
+        const montoCalc = redondearMoneda((total * pct) / 100);
+        estado.montoAnticipoTexto = montoCalc.toFixed(2);
+        if (inputPctAnticipo) inputPctAnticipo.value = estado.porcentajeAnticipoTexto;
+        if (inputMontoAnticipo) inputMontoAnticipo.value = estado.montoAnticipoTexto;
+        sincronizarChipsPorcentaje();
+        actualizarEstadoPagoModal();
+      });
+    });
+
+    inputPctAnticipo?.addEventListener('keydown', (event) => {
+      bloquearTeclasNoNumericas(event, { permitirDecimal: true });
+    });
+
+    inputPctAnticipo?.addEventListener('input', (event) => {
+      const limpio = sanitizarEntradaDecimal(event.target.value, 2);
+      if (event.target.value !== limpio) {
+        event.target.value = limpio;
+      }
+      estado.porcentajeAnticipoTexto = limpio;
+      const pct = Number(limpio);
+      if (limpio !== '' && Number.isFinite(pct) && pct > 0 && pct < 100) {
+        const montoCalc = redondearMoneda((total * pct) / 100);
+        estado.montoAnticipoTexto = montoCalc.toFixed(2);
+        if (inputMontoAnticipo) inputMontoAnticipo.value = estado.montoAnticipoTexto;
+      } else if (limpio === '') {
+        estado.montoAnticipoTexto = '';
+        if (inputMontoAnticipo) inputMontoAnticipo.value = '';
+      }
+      sincronizarChipsPorcentaje();
+      actualizarEstadoPagoModal();
+    });
+
+    inputMontoAnticipo?.addEventListener('keydown', (event) => {
+      bloquearTeclasNoNumericas(event, { permitirDecimal: true });
+    });
+
+    inputMontoAnticipo?.addEventListener('input', (event) => {
+      const limpio = sanitizarEntradaDecimal(event.target.value, 2);
+      if (event.target.value !== limpio) {
+        event.target.value = limpio;
+      }
+      estado.montoAnticipoTexto = limpio;
+      const montoNum = Number(limpio);
+      if (limpio !== '' && Number.isFinite(montoNum) && total > 0 && montoNum > 0) {
+        const pctCalc = Math.min(
+          99.99,
+          Math.max(0.01, Math.round((montoNum / total) * 10000) / 100)
+        );
+        estado.porcentajeAnticipoTexto = String(pctCalc);
+        if (inputPctAnticipo) inputPctAnticipo.value = estado.porcentajeAnticipoTexto;
+      } else if (limpio === '') {
+        estado.porcentajeAnticipoTexto = '';
+        if (inputPctAnticipo) inputPctAnticipo.value = '';
+      }
+      sincronizarChipsPorcentaje();
+      actualizarEstadoPagoModal();
+    });
+
+    inputNombrePendiente?.addEventListener('input', (e) => {
+      estado.nombrePendiente = e.target.value;
+    });
+
+    inputTelPendiente?.addEventListener('input', (e) => {
+      estado.telefonoPendiente = e.target.value;
     });
 
     inputNota.addEventListener('input', (e) => {
@@ -1464,8 +1763,10 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     });
 
     btnExacto.addEventListener('click', () => {
-      const { total: tot } = calcularTotalesCarrito();
-      estado.dineroRecibidoTexto = tot.toFixed(2);
+      const { total: tot, esParcial, anticipoValido, montoAnticipo } =
+        calcularTotalesCarrito();
+      const objetivo = esParcial && anticipoValido ? montoAnticipo : tot;
+      estado.dineroRecibidoTexto = objetivo.toFixed(2);
       inputPago.value = estado.dineroRecibidoTexto;
       actualizarEstadoPagoModal();
     });
@@ -1506,8 +1807,33 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       }
     }
 
-    const { total, recibidoValido, dineroRecibido, faltante } = calcularTotalesCarrito();
-    if (!recibidoValido || dineroRecibido < total) {
+    const {
+      total,
+      esParcial,
+      anticipoValido,
+      montoAnticipo,
+      porcentajeAnticipo,
+      recibidoValido,
+      dineroRecibido,
+      faltante
+    } = calcularTotalesCarrito();
+
+    if (esParcial) {
+      if (!anticipoValido) {
+        mostrarToast(
+          'Indique un monto o porcentaje de anticipo valido menor al total de la nota.',
+          'error'
+        );
+        return;
+      }
+      if (!recibidoValido || dineroRecibido < montoAnticipo) {
+        mostrarToast(
+          `Efectivo insuficiente para cubrir el anticipo. Faltan ${formatearMoneda(faltante)}.`,
+          'error'
+        );
+        return;
+      }
+    } else if (!recibidoValido || dineroRecibido < total) {
       mostrarToast(
         `Pago insuficiente. Faltan ${formatearMoneda(faltante)} para completar la venta.`,
         'error'
@@ -1517,7 +1843,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
     estado.procesando = true;
     btnConfirmar.disabled = true;
-    btnConfirmar.textContent = 'Registrando venta...';
+    btnConfirmar.textContent = esParcial ? 'Guardando nota...' : 'Registrando venta...';
 
     try {
       const payload = {
@@ -1526,10 +1852,22 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
           cantidad: item.cantidad
         })),
         dinero_recibido: dineroRecibido,
+        modalidad_pago: estado.modalidadPago,
         tipo_venta: estado.tipoVenta,
         nota_venta: estado.notaVenta.trim() || null,
         presupuesto_id: estado.presupuestoOrigen ? estado.presupuestoOrigen.id : null
       };
+
+      if (esParcial) {
+        payload.monto_anticipo = montoAnticipo;
+        payload.porcentaje_anticipo = porcentajeAnticipo;
+        if (estado.nombrePendiente.trim()) {
+          payload.nombre_pendiente = estado.nombrePendiente.trim();
+        }
+        if (estado.tipoVenta === 'GENERAL' && estado.telefonoPendiente.trim()) {
+          payload.telefono_pendiente = estado.telefonoPendiente.trim();
+        }
+      }
 
       if (estado.tipoVenta === 'CLIENTE') {
         const c = estado.clienteSeleccionado;
@@ -1558,11 +1896,16 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       }
 
       const respuesta = await api.post('/ventas', payload);
+      const saldoRestante = Number(respuesta.venta?.saldo_pendiente || 0);
+      const mensajeSaldo =
+        saldoRestante > 0
+          ? ` (saldo pendiente: ${formatearMoneda(saldoRestante)})`
+          : '';
       const mensajeExtra = respuesta.entrega
         ? ` y entrega programada para ${formatearFecha(respuesta.entrega.fecha_entrega)}`
         : '';
       mostrarToast(
-        `Venta ${respuesta.venta.folio} registrada${mensajeExtra}.`,
+        `Nota ${respuesta.venta.folio} guardada${mensajeSaldo}${mensajeExtra}.`,
         'success'
       );
 
@@ -1577,13 +1920,19 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         venta: respuesta.venta,
         detalle: respuesta.detalle,
         entrega: respuesta.entrega,
+        pagos: respuesta.pagos || [],
         negocio: respuesta.negocio,
-        titulo: `Ticket de venta ${respuesta.venta.folio}`
+        titulo:
+          saldoRestante > 0
+            ? `Nota con saldo pendiente ${respuesta.venta.folio}`
+            : `Ticket de venta ${respuesta.venta.folio}`
       });
     } catch (error) {
       mostrarToast(error.message, 'error');
       btnConfirmar.disabled = false;
-      btnConfirmar.textContent = 'Confirmar venta';
+      btnConfirmar.textContent = esParcial
+        ? 'Guardar nota con saldo pendiente'
+        : 'Confirmar venta';
       await cargarDatos();
     } finally {
       estado.procesando = false;

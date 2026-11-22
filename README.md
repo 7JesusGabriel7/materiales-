@@ -121,13 +121,14 @@ docker compose exec -T db sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "
 
 ## Modulos del Sistema
 
-1. **Ventas (POS)**: Vista en tarjetas y lista, busqueda por nombre, filtro por categoria, soporte de cantidades enteras y fraccionarias (minimo 1), calculo de cambio o faltante, flujo de cobro general o con cliente y entrega programada, creacion de presupuestos sin afectar stock, ticket termico de 58 mm y descarga en PDF.
+1. **Ventas (POS)**: Vista en tarjetas y lista, busqueda por nombre, filtro por categoria, soporte de cantidades enteras y fraccionarias (minimo 1), pago completo o pago parcial por porcentaje/monto con calculo de saldo pendiente, flujo de cobro general o con cliente y entrega programada, creacion de presupuestos sin afectar stock, ticket termico de 58 mm y descarga en PDF.
 2. **Presupuestos**: Registro y consulta de cotizaciones sin afectar ventas ni inventario, carga en el POS para concretar venta, ticket de 58 mm y descarga en PDF.
 3. **Entregas programadas y clientes**: Seguimiento de pedidos con cliente, fecha/horario de entrega, direccion, notas de venta, cambio de estado (Pendiente / Entregado), directorio de clientes y descarga de nota en PDF.
-4. **Productos**: Vista en tarjetas, alta, edicion, eliminacion o desactivacion segura, categorias personalizables, 7 unidades de medida y opcion de productos sin control de stock.
-5. **Inventario**: Resumen de productos activos, alertas de pocas existencias y agotados, registro de entradas, salidas manuales y ajustes, y bitacora completa de movimientos.
-6. **Historial de ventas**: Resumen de ventas de hoy y del dia anterior, filtros por periodo o folio, detalle con precios historicos inmutables, reimpresion de ticket de 58 mm y descarga de nota de venta en PDF.
-7. **Configuracion**: Edicion en vivo de nombre, direccion, telefono, RFC, mensajes independientes para ticket de venta (58 mm), presupuestos y notas PDF, ademas del selector de ilustracion (3 modelos de camion, 2 maquinas de excavar o solo texto) con vista previa y descarga de PDF de prueba.
+4. **Por cobrar (pagos parciales)**: Listado de notas con anticipo y saldo pendiente, asignacion o edicion de nombre de referencia, registro de abonos y liquidacion total, historial de pagos, ticket de 58 mm actualizado y PDF.
+5. **Productos**: Vista en tarjetas, alta, edicion, eliminacion o desactivacion segura, categorias personalizables, 7 unidades de medida y opcion de productos sin control de stock.
+6. **Inventario**: Resumen de productos activos, alertas de pocas existencias y agotados, registro de entradas, salidas manuales y ajustes, y bitacora completa de movimientos.
+7. **Historial de ventas**: Resumen de ventas de hoy y del dia anterior, filtros por periodo o folio, detalle con precios historicos inmutables, reimpresion de ticket de 58 mm y descarga de nota de venta en PDF.
+8. **Configuracion**: Edicion en vivo de nombre, direccion, telefono, RFC, mensajes independientes para ticket de venta (58 mm), presupuestos y notas PDF, ademas del selector de ilustracion (3 modelos de camion, 2 maquinas de excavar o solo texto) con vista previa y descarga de PDF de prueba.
 
 ---
 
@@ -139,6 +140,6 @@ docker compose exec -T db sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "
 - `GET / POST / PUT / DELETE /api/productos`: Administracion de catalogo.
 - `GET / POST / PUT / DELETE /api/clientes`: Directorio de clientes.
 - `GET /api/inventario/resumen`, `GET /api/inventario/bajo-stock`, `GET / POST /api/inventario/movimientos`: Control de inventario.
-- `GET / POST /api/ventas`, `GET /api/ventas/resumen`, `GET /api/ventas/:id`, `GET /api/ventas/:id/pdf`: Registro, consulta y descarga en PDF de ventas.
+- `GET / POST /api/ventas`, `GET /api/ventas/resumen`, `GET /api/ventas/por-cobrar`, `GET /api/ventas/por-cobrar/resumen`, `PATCH /api/ventas/:id/nombre`, `POST /api/ventas/:id/abonos`, `GET /api/ventas/:id`, `GET /api/ventas/:id/pdf`: Registro de ventas completas o parciales, cuentas por cobrar, abonos, consulta y descarga en PDF.
 - `GET / POST / PATCH / DELETE /api/presupuestos`, `GET /api/presupuestos/:id/pdf`: Cotizaciones y descarga en PDF.
 - `GET / PUT / PATCH /api/entregas`, `GET /api/entregas/:id/pdf`: Entregas programadas y descarga en PDF de su nota.

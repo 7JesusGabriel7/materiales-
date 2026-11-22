@@ -205,6 +205,32 @@ CREATE TABLE `movimientos_inventario` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `pagos_venta`
+--
+
+DROP TABLE IF EXISTS `pagos_venta`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `pagos_venta` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `venta_id` int unsigned NOT NULL,
+  `tipo` enum('ANTICIPO','ABONO','LIQUIDACION') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ABONO',
+  `monto` decimal(12,2) NOT NULL,
+  `dinero_recibido` decimal(12,2) NOT NULL,
+  `cambio` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `saldo_anterior` decimal(12,2) NOT NULL,
+  `saldo_nuevo` decimal(12,2) NOT NULL,
+  `nota` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `fecha_pago` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pagos_venta` (`venta_id`),
+  KEY `idx_pagos_fecha` (`fecha_pago`),
+  CONSTRAINT `fk_pagos_venta` FOREIGN KEY (`venta_id`) REFERENCES `ventas` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `chk_pagos_montos` CHECK (((`monto` > 0) and (`dinero_recibido` >= `monto`) and (`cambio` >= 0) and (`saldo_anterior` >= 0) and (`saldo_nuevo` >= 0)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `presupuestos`
 --
 
@@ -294,6 +320,12 @@ CREATE TABLE `ventas` (
   `total` decimal(12,2) NOT NULL,
   `dinero_recibido` decimal(12,2) NOT NULL,
   `cambio` decimal(12,2) NOT NULL,
+  `estado_pago` enum('PAGADA','PENDIENTE') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PAGADA',
+  `es_pago_parcial` tinyint(1) NOT NULL DEFAULT '0',
+  `porcentaje_anticipo` decimal(5,2) NOT NULL DEFAULT '100.00',
+  `monto_pagado` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `saldo_pendiente` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `nombre_pendiente` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `estado` enum('COMPLETADA','CANCELADA') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'COMPLETADA',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_ventas_folio` (`folio`),
@@ -301,8 +333,10 @@ CREATE TABLE `ventas` (
   KEY `idx_ventas_estado_fecha` (`estado`,`fecha_venta`),
   KEY `idx_ventas_cliente` (`cliente_id`),
   KEY `idx_ventas_tipo` (`tipo_venta`),
+  KEY `idx_ventas_estado_pago` (`estado_pago`,`fecha_venta`),
+  KEY `idx_ventas_parcial` (`es_pago_parcial`,`estado_pago`),
   CONSTRAINT `fk_ventas_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `chk_ventas_montos` CHECK (((`subtotal` >= 0) and (`total` >= 0) and (`dinero_recibido` >= `total`) and (`cambio` >= 0)))
+  CONSTRAINT `chk_ventas_montos` CHECK (((`subtotal` >= 0) and (`total` >= 0) and (`dinero_recibido` >= 0) and (`cambio` >= 0) and (`monto_pagado` >= 0) and (`saldo_pendiente` >= 0) and (`monto_pagado` <= `total`)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

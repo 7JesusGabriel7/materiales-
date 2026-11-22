@@ -2,6 +2,7 @@ import { api } from './api/client.js';
 import { crearModuloPos } from './modules/pos.js';
 import { crearModuloPresupuestos } from './modules/presupuestos.js';
 import { crearModuloEntregas } from './modules/entregas.js';
+import { crearModuloPorCobrar } from './modules/porCobrar.js';
 import { crearModuloProductos } from './modules/productos.js';
 import { crearModuloInventario } from './modules/inventario.js';
 import { crearModuloHistorial } from './modules/historial.js';
@@ -12,6 +13,7 @@ const TITULOS_VISTAS = {
   pos: 'Modulo de ventas',
   presupuestos: 'Presupuestos y cotizaciones',
   entregas: 'Entregas programadas',
+  'por-cobrar': 'Notas por cobrar (pagos parciales)',
   productos: 'Administracion de productos',
   inventario: 'Control de inventario',
   historial: 'Historial de ventas',
@@ -72,9 +74,10 @@ function alternarMenuLateral() {
 
 async function refrescarIndicadoresGlobales() {
   try {
-    const [resInv, resEnt] = await Promise.all([
+    const [resInv, resEnt, resPorCobrar] = await Promise.all([
       api.get('/inventario/resumen'),
-      api.get('/entregas/resumen')
+      api.get('/entregas/resumen'),
+      api.get('/ventas/por-cobrar/resumen')
     ]);
 
     const bajoStock = Number(resInv.resumen?.bajo_stock || 0);
@@ -89,6 +92,13 @@ async function refrescarIndicadoresGlobales() {
     if (badgeEntregas) {
       badgeEntregas.textContent = String(pendientesEntrega);
       badgeEntregas.classList.toggle('hidden', pendientesEntrega <= 0);
+    }
+
+    const notasPorCobrar = Number(resPorCobrar.resumen?.notas_pendientes || 0);
+    const badgePagos = document.getElementById('nav-pending-payments-badge');
+    if (badgePagos) {
+      badgePagos.textContent = String(notasPorCobrar);
+      badgePagos.classList.toggle('hidden', notasPorCobrar <= 0);
     }
   } catch {
     // Se ignora si la verificacion periodica no logra conectar temporalmente
@@ -183,6 +193,12 @@ const moduloEntregas = crearModuloEntregas({
   }
 });
 
+const moduloPorCobrar = crearModuloPorCobrar({
+  onCuentasModificadas: () => {
+    refrescarIndicadoresGlobales();
+  }
+});
+
 const moduloProductos = crearModuloProductos({
   obtenerUnidades: () => appState.unidadesMedida,
   onCatalogoModificado: () => {
@@ -208,6 +224,7 @@ const cargadoresVista = {
   pos: () => moduloPos.cargarDatos(),
   presupuestos: () => moduloPresupuestos.cargarDatos(),
   entregas: () => moduloEntregas.cargarDatos(),
+  'por-cobrar': () => moduloPorCobrar.cargarDatos(),
   productos: () => moduloProductos.cargarDatos(),
   inventario: () => moduloInventario.cargarDatos(),
   historial: () => moduloHistorial.cargarDatos(),

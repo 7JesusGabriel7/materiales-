@@ -39,11 +39,33 @@ function consolidarItemsVenta(itemsRaw) {
 
 async function registrarVenta(datos = {}) {
   const itemsSolicitados = consolidarItemsVenta(datos.items);
-  const dineroRecibido = parsearDecimalNoNegativo(
-    datos.dinero_recibido,
-    'dinero_recibido',
-    2
-  );
+
+  const modalidadPago = String(datos.modalidad_pago || 'COMPLETO')
+    .trim()
+    .toUpperCase();
+  if (!['COMPLETO', 'PARCIAL'].includes(modalidadPago)) {
+    throw new AppError('La modalidad de pago debe ser COMPLETO o PARCIAL.', 400);
+  }
+
+  const tieneDineroRecibido =
+    datos.dinero_recibido !== undefined &&
+    datos.dinero_recibido !== null &&
+    String(datos.dinero_recibido).trim() !== '';
+
+  let dineroRecibidoIngresado = null;
+  if (modalidadPago === 'COMPLETO') {
+    dineroRecibidoIngresado = parsearDecimalNoNegativo(
+      datos.dinero_recibido,
+      'dinero_recibido',
+      2
+    );
+  } else if (tieneDineroRecibido) {
+    dineroRecibidoIngresado = parsearDecimalNoNegativo(
+      datos.dinero_recibido,
+      'dinero_recibido',
+      2
+    );
+  }
 
   const tipoVenta = String(datos.tipo_venta || 'GENERAL').trim().toUpperCase();
   if (!['GENERAL', 'CLIENTE'].includes(tipoVenta)) {
@@ -81,6 +103,8 @@ async function registrarVenta(datos = {}) {
     datos.nota_venta !== undefined ? datos.nota_venta : entregaInput.nota_entrega,
     2000
   );
+  const nombrePendienteParam = textoOpcional(datos.nombre_pendiente, 150);
+  const telefonoPendienteParam = textoOpcional(datos.telefono_pendiente, 60);
 
   return conTransaccion(async (conexion) => {
     const idsProductos = itemsSolicitados.map((item) => item.producto_id);
@@ -145,22 +169,115 @@ async function registrarVenta(datos = {}) {
 
     const total = subtotal;
 
-    if (dineroRecibido < total) {
-      const faltante = redondearMoneda(total - dineroRecibido);
-      throw new AppError(
-        `Pago insuficiente. Faltan $${faltante.toFixed(2)} para completar el total de $${total.toFixed(2)}.`,
-        400,
-        {
-          total,
-          dinero_recibido: dineroRecibido,
-          faltante
+    let dineroRecibido = 0;
+    let cambio = 0;
+    let estadoPago = 'PAGADA';
+    let esPagoParcial = 0;
+    let porcentajeAnticipo = 100.0;
+    let montoPagado = total;
+    let saldoPendiente = 0;
+
+    if (modalidadPago === 'PARCIAL') {
+      if (total <= 0) {
+        throw new AppError(
+          'El total de la venta debe ser mayor a cero para registrar un pago parcial.',
+          400
+        );
+      }
+
+      const tieneMonto =
+        datos.monto_anticipo !== undefined &&
+        datos.monto_anticipo !== null &&
+        String(datos.monto_anticipo).trim() !== '';
+      const tienePorcentaje =
+        datos.porcentaje_anticipo !== undefined &&
+        datos.porcentaje_anticipo !== null &&
+        String(datos.porcentaje_anticipo).trim() !== '';
+
+      let montoAnticipo = 0;
+      if (tieneMonto) {
+        montoAnticipo = parsearDecimalPositivo(
+          datos.monto_anticipo,
+          'monto_anticipo',
+          2
+        );
+      } else if (tienePorcentaje) {
+        const pct = parsearDecimalPositivo(
+          datos.porcentaje_anticipo,
+          'porcentaje_anticipo',
+          2
+        );
+        if (pct <= 0 || pct >= 100) {
+          throw new AppError(
+            'El porcentaje de anticipo debe ser mayor a 0 y menor a 100.',
+            400
+          );
         }
+        montoAnticipo = redondearMoneda((total * pct) / 100);
+      } else {
+        throw new AppError(
+          'Indique el porcentaje o monto de anticipo para el pago parcial.',
+          400
+        );
+      }
+
+      if (montoAnticipo <= 0) {
+        throw new AppError('El monto de anticipo debe ser mayor a cero.', 400);
+      }
+
+      if (montoAnticipo >= total) {
+        throw new AppError(
+          'El anticipo cubre o supera el total. Para liquidar al 100%, seleccione pago completo.',
+          400
+        );
+      }
+
+      porcentajeAnticipo = Math.min(
+        99.99,
+        Math.max(0.01, redondearMoneda((montoAnticipo / total) * 100))
       );
+
+      dineroRecibido =
+        dineroRecibidoIngresado !== null ? dineroRecibidoIngresado : montoAnticipo;
+
+      if (dineroRecibido < montoAnticipo) {
+        const faltanteAnticipo = redondearMoneda(montoAnticipo - dineroRecibido);
+        throw new AppError(
+          `Efectivo insuficiente para cubrir el anticipo de $${montoAnticipo.toFixed(2)}. Faltan $${faltanteAnticipo.toFixed(2)}.`,
+          400,
+          {
+            anticipo: montoAnticipo,
+            dinero_recibido: dineroRecibido,
+            faltante: faltanteAnticipo
+          }
+        );
+      }
+
+      cambio = redondearMoneda(dineroRecibido - montoAnticipo);
+      montoPagado = montoAnticipo;
+      saldoPendiente = redondearMoneda(total - montoAnticipo);
+      estadoPago = 'PENDIENTE';
+      esPagoParcial = 1;
+    } else {
+      dineroRecibido = dineroRecibidoIngresado;
+      if (dineroRecibido < total) {
+        const faltante = redondearMoneda(total - dineroRecibido);
+        throw new AppError(
+          `Pago insuficiente. Faltan $${faltante.toFixed(2)} para completar el total de $${total.toFixed(2)}.`,
+          400,
+          {
+            total,
+            dinero_recibido: dineroRecibido,
+            faltante
+          }
+        );
+      }
+      cambio = redondearMoneda(dineroRecibido - total);
     }
 
     let clienteId = null;
     let clienteNombre = null;
-    let clienteTelefono = null;
+    let clienteTelefono = telefonoPendienteParam;
     let direccionEntrega = null;
     let referenciasEntrega = null;
     let horarioEntrega = null;
@@ -256,7 +373,7 @@ async function registrarVenta(datos = {}) {
       }
     }
 
-    const cambio = redondearMoneda(dineroRecibido - total);
+    const nombrePendienteFinal = nombrePendienteParam || clienteNombre || null;
     const folioTemporal = `TMP-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const [ventaInsert] = await conexion.query(
@@ -274,8 +391,14 @@ async function registrarVenta(datos = {}) {
         total,
         dinero_recibido,
         cambio,
+        estado_pago,
+        es_pago_parcial,
+        porcentaje_anticipo,
+        monto_pagado,
+        saldo_pendiente,
+        nombre_pendiente,
         estado
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETADA')`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETADA')`,
       [
         folioTemporal,
         tipoVenta,
@@ -289,7 +412,13 @@ async function registrarVenta(datos = {}) {
         subtotal,
         total,
         dineroRecibido,
-        cambio
+        cambio,
+        estadoPago,
+        esPagoParcial,
+        porcentajeAnticipo,
+        montoPagado,
+        saldoPendiente,
+        nombrePendienteFinal
       ]
     );
 
@@ -304,6 +433,30 @@ async function registrarVenta(datos = {}) {
       folioFinal,
       ventaId
     ]);
+
+    if (esPagoParcial === 1) {
+      await conexion.query(
+        `INSERT INTO pagos_venta (
+          venta_id,
+          tipo,
+          monto,
+          dinero_recibido,
+          cambio,
+          saldo_anterior,
+          saldo_nuevo,
+          nota
+        ) VALUES (?, 'ANTICIPO', ?, ?, ?, ?, ?, ?)`,
+        [
+          ventaId,
+          montoPagado,
+          dineroRecibido,
+          cambio,
+          total,
+          saldoPendiente,
+          `Anticipo inicial (${porcentajeAnticipo}%)`
+        ]
+      );
+    }
 
     for (const linea of lineasVenta) {
       await conexion.query(
@@ -411,12 +564,17 @@ async function registrarVenta(datos = {}) {
       'SELECT * FROM detalle_ventas WHERE venta_id = ? ORDER BY id ASC',
       [ventaId]
     );
+    const [pagosRows] = await conexion.query(
+      'SELECT * FROM pagos_venta WHERE venta_id = ? ORDER BY fecha_pago ASC, id ASC',
+      [ventaId]
+    );
     const negocio = await configuracionService.obtenerConfiguracionNegocio();
 
     return {
       venta: ventaCompletaRows[0],
       detalle: detalleRows,
       entrega: entregaCreada,
+      pagos: pagosRows,
       negocio
     };
   });
@@ -499,6 +657,12 @@ async function listarVentas(filtros = {}) {
       v.total,
       v.dinero_recibido,
       v.cambio,
+      v.estado_pago,
+      v.es_pago_parcial,
+      v.porcentaje_anticipo,
+      v.monto_pagado,
+      v.saldo_pendiente,
+      v.nombre_pendiente,
       v.estado,
       e.id AS entrega_id,
       e.fecha_entrega AS entrega_fecha,
@@ -554,13 +718,271 @@ async function obtenerVentaPorId(id) {
     [id]
   );
 
+  const [pagosRows] = await pool.query(
+    'SELECT * FROM pagos_venta WHERE venta_id = ? ORDER BY fecha_pago ASC, id ASC',
+    [id]
+  );
+
   const negocio = await configuracionService.obtenerConfiguracionNegocio();
 
   return {
     venta: ventaRows[0],
     detalle: detalleRows,
     entrega: entregaRows.length > 0 ? entregaRows[0] : null,
+    pagos: pagosRows,
     negocio
+  };
+}
+
+async function obtenerResumenPorCobrar() {
+  const [ventasRows] = await pool.query(
+    `SELECT
+      COALESCE(SUM(CASE WHEN estado = 'COMPLETADA' AND estado_pago = 'PENDIENTE' AND saldo_pendiente > 0 THEN 1 ELSE 0 END), 0) AS notas_pendientes,
+      ROUND(COALESCE(SUM(CASE WHEN estado = 'COMPLETADA' AND estado_pago = 'PENDIENTE' AND saldo_pendiente > 0 THEN saldo_pendiente ELSE 0 END), 0), 2) AS saldo_total_pendiente,
+      COALESCE(SUM(CASE WHEN estado = 'COMPLETADA' AND es_pago_parcial = 1 AND estado_pago = 'PAGADA' THEN 1 ELSE 0 END), 0) AS notas_liquidadas
+    FROM ventas`
+  );
+
+  const [pagosRows] = await pool.query(
+    `SELECT
+      ROUND(COALESCE(SUM(p.monto), 0), 2) AS cobrado_hoy_abonos
+    FROM pagos_venta p
+    INNER JOIN ventas v ON v.id = p.venta_id
+    WHERE v.estado = 'COMPLETADA' AND DATE(p.fecha_pago) = CURDATE()`
+  );
+
+  return {
+    ...ventasRows[0],
+    cobrado_hoy_abonos: pagosRows[0]?.cobrado_hoy_abonos || 0
+  };
+}
+
+async function listarCuentasPorCobrar(filtros = {}) {
+  const condiciones = ["v.estado = 'COMPLETADA'"];
+  const params = [];
+
+  const estadoFiltro = String(filtros.estado_pago || 'PENDIENTE')
+    .trim()
+    .toUpperCase();
+  if (estadoFiltro === 'PENDIENTE') {
+    condiciones.push("v.estado_pago = 'PENDIENTE' AND v.saldo_pendiente > 0");
+  } else if (estadoFiltro === 'PAGADA') {
+    condiciones.push("v.es_pago_parcial = 1 AND v.estado_pago = 'PAGADA'");
+  } else if (estadoFiltro === 'TODAS') {
+    condiciones.push("(v.es_pago_parcial = 1 OR v.estado_pago = 'PENDIENTE')");
+  } else {
+    throw new AppError(
+      'El filtro estado_pago debe ser PENDIENTE, PAGADA o TODAS.',
+      400
+    );
+  }
+
+  if (filtros.buscar && String(filtros.buscar).trim() !== '') {
+    const termino = `%${String(filtros.buscar).trim()}%`;
+    condiciones.push(
+      `(v.folio LIKE ? OR COALESCE(v.nombre_pendiente, '') LIKE ? OR COALESCE(v.cliente_nombre, '') LIKE ? OR COALESCE(v.cliente_telefono, '') LIKE ? OR COALESCE(v.nota_venta, '') LIKE ?)`
+    );
+    params.push(termino, termino, termino, termino, termino);
+  }
+
+  const pagina = Math.max(1, Number.parseInt(filtros.pagina, 10) || 1);
+  const limite = Math.min(200, Math.max(1, Number.parseInt(filtros.limite, 10) || 25));
+  const offset = (pagina - 1) * limite;
+  const whereSql = condiciones.join(' AND ');
+
+  const [agregadosRows] = await pool.query(
+    `SELECT
+      COUNT(*) AS total_registros,
+      ROUND(COALESCE(SUM(v.saldo_pendiente), 0), 2) AS saldo_filtro
+    FROM ventas v
+    WHERE ${whereSql}`,
+    params
+  );
+
+  const totalRegistros = agregadosRows[0].total_registros;
+  const saldoFiltro = agregadosRows[0].saldo_filtro;
+
+  const [notas] = await pool.query(
+    `SELECT
+      v.id,
+      v.folio,
+      v.fecha_venta,
+      v.tipo_venta,
+      v.cliente_id,
+      v.cliente_nombre,
+      v.cliente_telefono,
+      v.cliente_direccion,
+      v.nota_venta,
+      v.cantidad_productos,
+      v.total_unidades,
+      v.subtotal,
+      v.total,
+      v.estado_pago,
+      v.es_pago_parcial,
+      v.porcentaje_anticipo,
+      v.monto_pagado,
+      v.saldo_pendiente,
+      v.nombre_pendiente,
+      e.id AS entrega_id,
+      e.fecha_entrega AS entrega_fecha,
+      e.estado AS entrega_estado,
+      (SELECT COUNT(*) FROM pagos_venta p WHERE p.venta_id = v.id) AS total_abonos
+    FROM ventas v
+    LEFT JOIN entregas_programadas e ON e.venta_id = v.id
+    WHERE ${whereSql}
+    ORDER BY (v.estado_pago = 'PENDIENTE') DESC, v.fecha_venta DESC, v.id DESC
+    LIMIT ? OFFSET ?`,
+    [...params, limite, offset]
+  );
+
+  return {
+    notas,
+    totales_filtro: {
+      cantidad_notas: totalRegistros,
+      saldo_filtro: saldoFiltro
+    },
+    paginacion: {
+      total: totalRegistros,
+      pagina,
+      limite,
+      total_paginas: Math.max(1, Math.ceil(totalRegistros / limite))
+    }
+  };
+}
+
+async function asignarNombreVenta(id, datos = {}) {
+  const nombre = requerirTexto(
+    datos.nombre_pendiente !== undefined ? datos.nombre_pendiente : datos.nombre,
+    'nombre',
+    { min: 2, max: 150 }
+  );
+
+  const [filas] = await pool.query(
+    'SELECT id, cliente_telefono, nota_venta FROM ventas WHERE id = ? LIMIT 1',
+    [id]
+  );
+  if (filas.length === 0) {
+    throw new AppError('Nota de venta no encontrada.', 404);
+  }
+  const actual = filas[0];
+
+  const telefonoFinal =
+    datos.telefono !== undefined
+      ? textoOpcional(datos.telefono, 60)
+      : actual.cliente_telefono;
+  const notaFinal =
+    datos.nota_venta !== undefined
+      ? textoOpcional(datos.nota_venta, 2000)
+      : actual.nota_venta;
+
+  await pool.query(
+    `UPDATE ventas
+    SET nombre_pendiente = ?, cliente_telefono = ?, nota_venta = ?
+    WHERE id = ?`,
+    [nombre, telefonoFinal, notaFinal, id]
+  );
+
+  return obtenerVentaPorId(id);
+}
+
+async function registrarAbonoVenta(id, datos = {}) {
+  const monto = parsearDecimalPositivo(datos.monto, 'monto', 2);
+  const nota = textoOpcional(datos.nota, 255);
+  const tieneRecibido =
+    datos.dinero_recibido !== undefined &&
+    datos.dinero_recibido !== null &&
+    String(datos.dinero_recibido).trim() !== '';
+  const dineroRecibidoInput = tieneRecibido
+    ? parsearDecimalNoNegativo(datos.dinero_recibido, 'dinero_recibido', 2)
+    : monto;
+
+  if (dineroRecibidoInput < monto) {
+    const faltante = redondearMoneda(monto - dineroRecibidoInput);
+    throw new AppError(
+      `Efectivo insuficiente para cubrir el abono de $${monto.toFixed(2)}. Faltan $${faltante.toFixed(2)}.`,
+      400
+    );
+  }
+
+  let pagoInsertId = null;
+
+  await conTransaccion(async (conexion) => {
+    const [ventaRows] = await conexion.query(
+      'SELECT * FROM ventas WHERE id = ? FOR UPDATE',
+      [id]
+    );
+    if (ventaRows.length === 0) {
+      throw new AppError('Nota de venta no encontrada.', 404);
+    }
+
+    const venta = ventaRows[0];
+    if (venta.estado !== 'COMPLETADA') {
+      throw new AppError('No es posible registrar abonos sobre una venta cancelada.', 409);
+    }
+
+    const saldoActual = redondearMoneda(venta.saldo_pendiente);
+    if (venta.estado_pago !== 'PENDIENTE' || saldoActual <= 0) {
+      throw new AppError('Esta nota ya esta liquidada y no tiene saldo pendiente.', 409);
+    }
+
+    if (monto > saldoActual) {
+      throw new AppError(
+        `El abono ($${monto.toFixed(2)}) no puede exceder el saldo pendiente ($${saldoActual.toFixed(2)}).`,
+        400
+      );
+    }
+
+    const cambio = redondearMoneda(dineroRecibidoInput - monto);
+    const saldoNuevo = redondearMoneda(Math.max(0, saldoActual - monto));
+    const nuevoPagado = redondearMoneda(Number(venta.total) - saldoNuevo);
+    const liquidada = saldoNuevo <= 0;
+    const tipoPago = liquidada ? 'LIQUIDACION' : 'ABONO';
+    const nuevoEstadoPago = liquidada ? 'PAGADA' : 'PENDIENTE';
+
+    await conexion.query(
+      `UPDATE ventas
+      SET
+        monto_pagado = ?,
+        saldo_pendiente = ?,
+        estado_pago = ?,
+        es_pago_parcial = 1
+      WHERE id = ?`,
+      [nuevoPagado, saldoNuevo, nuevoEstadoPago, id]
+    );
+
+    const [insertPago] = await conexion.query(
+      `INSERT INTO pagos_venta (
+        venta_id,
+        tipo,
+        monto,
+        dinero_recibido,
+        cambio,
+        saldo_anterior,
+        saldo_nuevo,
+        nota
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        tipoPago,
+        monto,
+        dineroRecibidoInput,
+        cambio,
+        saldoActual,
+        saldoNuevo,
+        nota || (liquidada ? 'Liquidacion final de nota' : 'Abono a cuenta pendiente')
+      ]
+    );
+    pagoInsertId = insertPago.insertId;
+  });
+
+  const detalleCompleto = await obtenerVentaPorId(id);
+  const [pagoRows] = await pool.query('SELECT * FROM pagos_venta WHERE id = ?', [
+    pagoInsertId
+  ]);
+
+  return {
+    ...detalleCompleto,
+    ultimo_pago: pagoRows[0] || null
   };
 }
 
@@ -568,5 +990,9 @@ module.exports = {
   registrarVenta,
   obtenerResumenVentas,
   listarVentas,
-  obtenerVentaPorId
+  obtenerVentaPorId,
+  obtenerResumenPorCobrar,
+  listarCuentasPorCobrar,
+  asignarNombreVenta,
+  registrarAbonoVenta
 };

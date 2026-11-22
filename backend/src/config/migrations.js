@@ -30,6 +30,21 @@ async function obtenerForaneasTabla(tabla) {
   return new Set(rows.map((r) => r.CONSTRAINT_NAME));
 }
 
+async function obtenerChecksTabla(tabla) {
+  const [rows] = await pool.query(
+    `SELECT tc.CONSTRAINT_NAME, cc.CHECK_CLAUSE
+    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+    INNER JOIN INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc
+      ON cc.CONSTRAINT_SCHEMA = tc.CONSTRAINT_SCHEMA
+     AND cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+    WHERE tc.TABLE_SCHEMA = DATABASE()
+      AND tc.TABLE_NAME = ?
+      AND tc.CONSTRAINT_TYPE = 'CHECK'`,
+    [tabla]
+  );
+  return new Map(rows.map((r) => [r.CONSTRAINT_NAME, String(r.CHECK_CLAUSE || '')]));
+}
+
 /**
  * Ejecuta migraciones idempotentes para bases de datos ya existentes sin perder informacion.
  */
@@ -83,6 +98,30 @@ async function ejecutarMigraciones() {
     [
       'nota_venta',
       'ADD COLUMN nota_venta TEXT NULL AFTER cliente_direccion'
+    ],
+    [
+      'estado_pago',
+      "ADD COLUMN estado_pago ENUM('PAGADA', 'PENDIENTE') NOT NULL DEFAULT 'PAGADA' AFTER cambio"
+    ],
+    [
+      'es_pago_parcial',
+      'ADD COLUMN es_pago_parcial TINYINT(1) NOT NULL DEFAULT 0 AFTER estado_pago'
+    ],
+    [
+      'porcentaje_anticipo',
+      'ADD COLUMN porcentaje_anticipo DECIMAL(5,2) NOT NULL DEFAULT 100.00 AFTER es_pago_parcial'
+    ],
+    [
+      'monto_pagado',
+      'ADD COLUMN monto_pagado DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER porcentaje_anticipo'
+    ],
+    [
+      'saldo_pendiente',
+      'ADD COLUMN saldo_pendiente DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER monto_pagado'
+    ],
+    [
+      'nombre_pendiente',
+      'ADD COLUMN nombre_pendiente VARCHAR(150) NULL AFTER saldo_pendiente'
     ]
   ];
 
@@ -92,12 +131,52 @@ async function ejecutarMigraciones() {
     }
   }
 
+  await pool.query(
+    `UPDATE ventas
+    SET
+      monto_pagado = total,
+      saldo_pendiente = 0.00,
+      porcentaje_anticipo = 100.00,
+      estado_pago = 'PAGADA'
+    WHERE es_pago_parcial = 0 AND monto_pagado = 0 AND saldo_pendiente = 0 AND total > 0`
+  );
+
+  const checksVentas = await obtenerChecksTabla('ventas');
+  const clausulaCheck = checksVentas.get('chk_ventas_montos');
+  if (!clausulaCheck || !clausulaCheck.includes('saldo_pendiente')) {
+    if (clausulaCheck) {
+      await pool.query('ALTER TABLE ventas DROP CHECK chk_ventas_montos');
+    }
+    await pool.query(`
+      ALTER TABLE ventas
+      ADD CONSTRAINT chk_ventas_montos CHECK (
+        subtotal >= 0
+        AND total >= 0
+        AND dinero_recibido >= 0
+        AND cambio >= 0
+        AND monto_pagado >= 0
+        AND saldo_pendiente >= 0
+        AND monto_pagado <= total
+      )
+    `);
+  }
+
   const indicesVentas = await obtenerIndicesTabla('ventas');
   if (!indicesVentas.has('idx_ventas_cliente')) {
     await pool.query('ALTER TABLE ventas ADD KEY idx_ventas_cliente (cliente_id)');
   }
   if (!indicesVentas.has('idx_ventas_tipo')) {
     await pool.query('ALTER TABLE ventas ADD KEY idx_ventas_tipo (tipo_venta)');
+  }
+  if (!indicesVentas.has('idx_ventas_estado_pago')) {
+    await pool.query(
+      'ALTER TABLE ventas ADD KEY idx_ventas_estado_pago (estado_pago, fecha_venta)'
+    );
+  }
+  if (!indicesVentas.has('idx_ventas_parcial')) {
+    await pool.query(
+      'ALTER TABLE ventas ADD KEY idx_ventas_parcial (es_pago_parcial, estado_pago)'
+    );
   }
 
   const foraneasVentas = await obtenerForaneasTabla('ventas');
@@ -199,6 +278,35 @@ async function ejecutarMigraciones() {
         ON DELETE SET NULL,
       CONSTRAINT chk_det_pres_valores CHECK (
         cantidad >= 1 AND precio_unitario >= 0 AND importe >= 0
+      )
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS pagos_venta (
+      id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      venta_id INT UNSIGNED NOT NULL,
+      tipo ENUM('ANTICIPO', 'ABONO', 'LIQUIDACION') NOT NULL DEFAULT 'ABONO',
+      monto DECIMAL(12,2) NOT NULL,
+      dinero_recibido DECIMAL(12,2) NOT NULL,
+      cambio DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      saldo_anterior DECIMAL(12,2) NOT NULL,
+      saldo_nuevo DECIMAL(12,2) NOT NULL,
+      nota VARCHAR(255) NULL,
+      fecha_pago DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (id),
+      KEY idx_pagos_venta (venta_id),
+      KEY idx_pagos_fecha (fecha_pago),
+      CONSTRAINT fk_pagos_venta
+        FOREIGN KEY (venta_id) REFERENCES ventas (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+      CONSTRAINT chk_pagos_montos CHECK (
+        monto > 0
+        AND dinero_recibido >= monto
+        AND cambio >= 0
+        AND saldo_anterior >= 0
+        AND saldo_nuevo >= 0
       )
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);

@@ -591,14 +591,124 @@ function dibujarBloqueTotales(doc, yInicio, { filasSecundarias = [], etiquetaTot
   cursorY += 32;
 
   filasPosteriores.forEach((f) => {
-    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.textoSecundario);
-    doc.text(f.etiqueta, x + 8, cursorY, { width: 112, lineBreak: false });
+    const etiquetaFinal = f.negrita ? f.etiqueta : f.etiqueta;
+    if (f.destacado) {
+      cursorY += 2;
+      doc.roundedRect(x, cursorY, anchoCaja, 24, 4).fillColor(f.colorFondo || COLORES.negro).fill();
+      doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.blanco);
+      doc.text(etiquetaFinal, x + 10, cursorY + 7, { width: 118, lineBreak: false });
+      doc.font('Helvetica-Bold').fontSize(10.5).fillColor(COLORES.blanco);
+      doc.text(f.valor, x + 128, cursorY + 6, {
+        width: anchoCaja - 136,
+        align: 'right',
+        lineBreak: false
+      });
+      cursorY += 30;
+      return;
+    }
+
+    doc.font(f.negrita ? 'Helvetica-Bold' : 'Helvetica')
+      .fontSize(9.5)
+      .fillColor(COLORES.textoSecundario);
+    doc.text(etiquetaFinal, x + 8, cursorY, { width: 118, lineBreak: false });
     doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.texto);
-    doc.text(f.valor, x + 120, cursorY, { width: anchoCaja - 128, align: 'right', lineBreak: false });
+    doc.text(f.valor, x + 126, cursorY, {
+      width: anchoCaja - 134,
+      align: 'right',
+      lineBreak: false
+    });
     cursorY += 17;
   });
 
   return cursorY + 8;
+}
+
+const ETIQUETAS_TIPO_PAGO_PDF = {
+  ANTICIPO: 'Anticipo inicial',
+  ABONO: 'Abono',
+  LIQUIDACION: 'Liquidacion final'
+};
+
+function dibujarTablaPagosPdf(doc, yInicio, pagos) {
+  if (!Array.isArray(pagos) || pagos.length === 0) {
+    return yInicio;
+  }
+
+  let y = yInicio;
+  if (y + 62 > LIMITE_INFERIOR - 30) {
+    doc.addPage();
+    dibujarFranjaSuperior(doc);
+    y = 30;
+  }
+
+  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(COLORES.azul);
+  doc.text('HISTORIAL DE PAGOS Y ABONOS', MARGEN, y, { width: ANCHO_CONTENIDO });
+  y += 14;
+
+  const dibujarHeaderPagos = (posY) => {
+    doc.rect(MARGEN, posY, ANCHO_CONTENIDO, 20).fillColor(COLORES.negro).fill();
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(COLORES.blanco);
+    doc.text('FECHA / HORA', MARGEN + 8, posY + 6, { width: 92, lineBreak: false });
+    doc.text('MOVIMIENTO', MARGEN + 104, posY + 6, { width: 98, lineBreak: false });
+    doc.text('NOTA', MARGEN + 206, posY + 6, { width: 158, lineBreak: false });
+    doc.text('ABONO', MARGEN + 368, posY + 6, { width: 74, align: 'right', lineBreak: false });
+    doc.text('SALDO REST.', MARGEN + 446, posY + 6, {
+      width: 74,
+      align: 'right',
+      lineBreak: false
+    });
+    return posY + 20;
+  };
+
+  y = dibujarHeaderPagos(y);
+
+  pagos.forEach((p, idx) => {
+    const notaPago = limpiarTexto(p.nota) || '-';
+    doc.font('Helvetica').fontSize(8);
+    const altoNota = doc.heightOfString(notaPago, { width: 158 });
+    const altoFila = Math.max(19, altoNota + 9);
+
+    if (y + altoFila > LIMITE_INFERIOR - 24) {
+      doc.addPage();
+      dibujarFranjaSuperior(doc);
+      y = 30;
+      y = dibujarHeaderPagos(y);
+    }
+
+    const fondo = idx % 2 === 1 ? COLORES.fondoClaro : COLORES.blanco;
+    doc.rect(MARGEN, y, ANCHO_CONTENIDO, altoFila).fillColor(fondo).fill();
+    doc.moveTo(MARGEN, y + altoFila)
+      .lineTo(MARGEN + ANCHO_CONTENIDO, y + altoFila)
+      .lineWidth(0.5)
+      .strokeColor(COLORES.bordeSuave)
+      .stroke();
+
+    const fechaPagoTxt = `${convertirFechaIsoATexto(p.fecha_pago)} ${extraerHoraTexto(p.fecha_pago)}`.trim();
+    const movTxt = ETIQUETAS_TIPO_PAGO_PDF[p.tipo] || limpiarTexto(p.tipo) || 'Pago';
+
+    doc.font('Helvetica').fontSize(8).fillColor(COLORES.textoSecundario);
+    doc.text(fechaPagoTxt, MARGEN + 8, y + 5, { width: 92, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORES.texto);
+    doc.text(movTxt, MARGEN + 104, y + 5, { width: 98, lineBreak: false });
+    doc.font('Helvetica').fontSize(8).fillColor(COLORES.textoSecundario);
+    doc.text(notaPago, MARGEN + 206, y + 5, { width: 158, lineBreak: true });
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORES.negro);
+    doc.text(formatearMoneda(p.monto), MARGEN + 368, y + 5, {
+      width: 74,
+      align: 'right',
+      lineBreak: false
+    });
+    doc.font('Helvetica').fontSize(8).fillColor(COLORES.texto);
+    doc.text(formatearMoneda(p.saldo_nuevo), MARGEN + 446, y + 5, {
+      width: 74,
+      align: 'right',
+      lineBreak: false
+    });
+
+    y += altoFila;
+  });
+
+  return y + 12;
 }
 
 function dibujarPieDocumento(doc, yInicio, { mensajePrincipal, referenciaFolio, lineaFirma = false }) {
@@ -673,7 +783,13 @@ function construirBufferPdf(construirContenidoFn) {
   });
 }
 
-async function generarPdfNotaVenta({ venta, detalle = [], entrega = null, negocio = {} }) {
+async function generarPdfNotaVenta({
+  venta,
+  detalle = [],
+  entrega = null,
+  pagos = [],
+  negocio = {}
+}) {
   return construirBufferPdf((doc) => {
     const fechaStr = convertirFechaIsoATexto(venta.fecha_venta);
     const horaStr = extraerHoraTexto(venta.fecha_venta);
@@ -682,23 +798,54 @@ async function generarPdfNotaVenta({ venta, detalle = [], entrega = null, negoci
         ? 'Con cliente / Entrega programada'
         : 'Venta general';
 
+    const saldoPendiente = Number(venta.saldo_pendiente || 0);
+    const esParcial =
+      Boolean(Number(venta.es_pago_parcial)) ||
+      venta.estado_pago === 'PENDIENTE' ||
+      saldoPendiente > 0;
+    const totalNum = Number(venta.total || 0);
+    const montoPagado = esParcial
+      ? Number(venta.monto_pagado || 0)
+      : totalNum;
+    const pctPagado =
+      totalNum > 0 ? Math.round((montoPagado / totalNum) * 10000) / 100 : 100;
+
+    const estadoDoc = esParcial
+      ? saldoPendiente > 0
+        ? 'SALDO PENDIENTE'
+        : 'LIQUIDADA'
+      : venta.estado;
+
     let y = dibujarEncabezadoDocumento(doc, {
       negocio,
       tituloDoc: 'NOTA DE VENTA',
       folio: venta.folio,
       fechaStr,
       horaStr,
-      estadoDoc: venta.estado
+      estadoDoc
     });
 
     const clienteNombre = entrega?.cliente_nombre || venta.cliente_nombre || '';
+    const nombreAsignado = venta.nombre_pendiente || '';
     const clienteTel = entrega?.cliente_telefono || venta.cliente_telefono || '';
     const clienteDir = entrega?.direccion_entrega || venta.cliente_direccion || '';
     const referencias = entrega?.referencias || '';
 
+    const condicionPagoTexto = esParcial
+      ? saldoPendiente > 0
+        ? `Pago parcial (${Number(venta.porcentaje_anticipo || pctPagado)}% anticipo) - Saldo pendiente`
+        : 'Pago parcial liquidado al 100%'
+      : 'Pago completo de contado';
+
     const filasDatos = [
       { etiqueta: 'Tipo de venta', valor: tipoTexto },
-      ...(clienteNombre ? [{ etiqueta: 'Cliente', valor: clienteNombre }] : []),
+      { etiqueta: 'Condicion de pago', valor: condicionPagoTexto },
+      ...(nombreAsignado
+        ? [{ etiqueta: 'Nombre asignado', valor: nombreAsignado }]
+        : []),
+      ...(clienteNombre && clienteNombre !== nombreAsignado
+        ? [{ etiqueta: 'Cliente', valor: clienteNombre }]
+        : []),
       ...(clienteTel ? [{ etiqueta: 'Telefono', valor: clienteTel }] : []),
       ...(clienteDir ? [{ etiqueta: 'Direccion', valor: clienteDir }] : []),
       ...(referencias ? [{ etiqueta: 'Referencias', valor: referencias }] : []),
@@ -723,15 +870,30 @@ async function generarPdfNotaVenta({ venta, detalle = [], entrega = null, negoci
 
     y = dibujarTablaPartidas(doc, y, detalle);
 
-    y = dibujarBloqueTotales(doc, y, {
-      etiquetaTotal: 'TOTAL',
-      valorTotal: formatearMoneda(venta.total),
-      filasSecundarias: [
-        {
-          etiqueta: 'Subtotal',
-          valor: formatearMoneda(venta.subtotal),
-          antesDeTotal: true
-        },
+    const filasTotalesSecundarias = [
+      {
+        etiqueta: 'Subtotal',
+        valor: formatearMoneda(venta.subtotal),
+        antesDeTotal: true
+      }
+    ];
+
+    if (esParcial) {
+      filasTotalesSecundarias.push({
+        etiqueta: `Pagado (${pctPagado}%)`,
+        valor: formatearMoneda(montoPagado),
+        antesDeTotal: false,
+        negrita: true
+      });
+      filasTotalesSecundarias.push({
+        etiqueta: saldoPendiente > 0 ? 'SALDO PENDIENTE' : 'SALDO LIQUIDADO',
+        valor: formatearMoneda(saldoPendiente),
+        antesDeTotal: false,
+        destacado: true,
+        colorFondo: saldoPendiente > 0 ? COLORES.negro : '#166534'
+      });
+    } else {
+      filasTotalesSecundarias.push(
         {
           etiqueta: 'Dinero recibido',
           valor: formatearMoneda(venta.dinero_recibido),
@@ -742,8 +904,19 @@ async function generarPdfNotaVenta({ venta, detalle = [], entrega = null, negoci
           valor: formatearMoneda(venta.cambio),
           antesDeTotal: false
         }
-      ]
+      );
+    }
+
+    y = dibujarBloqueTotales(doc, y, {
+      etiquetaTotal: 'TOTAL',
+      valorTotal: formatearMoneda(venta.total),
+      anchoCaja: 242,
+      filasSecundarias: filasTotalesSecundarias
     });
+
+    if (esParcial && Array.isArray(pagos) && pagos.length > 0) {
+      y = dibujarTablaPagosPdf(doc, y, pagos);
+    }
 
     dibujarPieDocumento(doc, y, {
       mensajePrincipal:
