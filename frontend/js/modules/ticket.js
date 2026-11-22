@@ -270,16 +270,12 @@ export function generarHtmlTicket58mm({
           <span>${formatearMoneda(saldoPendiente)}</span>
         </div>
         ${
-          Number(venta.dinero_recibido) > 0
+          Number(venta.cambio) > 0
             ? `<div class="ticket-total-row">
                 <span>Recibido (anticipo):</span>
                 <span>${formatearMoneda(venta.dinero_recibido)}</span>
-              </div>`
-            : ''
-        }
-        ${
-          Number(venta.cambio) > 0
-            ? `<div class="ticket-total-row">
+              </div>
+              <div class="ticket-total-row">
                 <span>Cambio (anticipo):</span>
                 <span>${formatearMoneda(venta.cambio)}</span>
               </div>`

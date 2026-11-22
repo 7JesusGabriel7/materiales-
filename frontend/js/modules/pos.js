@@ -54,7 +54,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     vistaCatalogo: leerPreferenciaVistaCatalogo(),
     dineroRecibidoTexto: '',
     modalidadPago: 'COMPLETO',
-    montoAnticipoTexto: '',
     nombrePendiente: '',
     telefonoPendiente: '',
     tipoVenta: 'GENERAL',
@@ -102,38 +101,35 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
     const total = subtotal;
     const esParcial = estado.modalidadPago === 'PARCIAL';
-    const montoAntNum = Number(estado.montoAnticipoTexto);
-    const anticipoValido =
-      esParcial &&
-      estado.montoAnticipoTexto.trim() !== '' &&
-      Number.isFinite(montoAntNum) &&
-      montoAntNum > 0 &&
-      montoAntNum < total;
-    const montoAnticipo = anticipoValido ? redondearMoneda(montoAntNum) : 0;
-    const saldoPendiente =
-      esParcial && anticipoValido ? redondearMoneda(total - montoAnticipo) : 0;
-
     const recibidoNum = Number(estado.dineroRecibidoTexto);
     const recibidoValido =
       estado.dineroRecibidoTexto.trim() !== '' &&
       Number.isFinite(recibidoNum) &&
       recibidoNum >= 0;
     const dineroRecibido = recibidoValido ? redondearMoneda(recibidoNum) : 0;
-    const objetivoCobro = esParcial ? montoAnticipo : total;
-    const diferencia = redondearMoneda(dineroRecibido - objetivoCobro);
+
+    const excedeTotalParcial = esParcial && recibidoValido && dineroRecibido >= total;
+    const anticipoValido =
+      esParcial && recibidoValido && dineroRecibido > 0 && dineroRecibido < total;
+    const montoAnticipo = anticipoValido ? dineroRecibido : 0;
+    const saldoPendiente =
+      esParcial && anticipoValido ? redondearMoneda(total - montoAnticipo) : 0;
+
+    const diferencia = redondearMoneda(dineroRecibido - total);
 
     return {
       subtotal,
       total,
       totalUnidades,
       esParcial,
+      excedeTotalParcial,
       anticipoValido,
       montoAnticipo,
       saldoPendiente,
       recibidoValido,
       dineroRecibido,
-      cambio: diferencia >= 0 ? diferencia : 0,
-      faltante: diferencia < 0 ? Math.abs(diferencia) : 0
+      cambio: !esParcial && diferencia >= 0 ? diferencia : 0,
+      faltante: !esParcial && diferencia < 0 ? Math.abs(diferencia) : 0
     };
   }
 
@@ -141,7 +137,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     estado.carrito = [];
     estado.dineroRecibidoTexto = '';
     estado.modalidadPago = 'COMPLETO';
-    estado.montoAnticipoTexto = '';
     estado.nombrePendiente = '';
     estado.telefonoPendiente = '';
     estado.tipoVenta = 'GENERAL';
@@ -878,21 +873,50 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         <div class="checkout-grid">
           <div class="checkout-col-main">
             <div>
-              <div class="checkout-section-label">1. Tipo de venta</div>
-              <div class="dest-choice-grid" role="group" aria-label="Tipo de venta">
+              <div class="checkout-section-label">1. A quien se vende</div>
+              <div class="dest-choice-grid" role="group" aria-label="A quien se vende">
                 <button type="button" id="chk-dest-general" class="dest-choice-card">
-                  <span class="dest-choice-title">Venta general</span>
-                  <span class="dest-choice-desc">Mostrador / entrega inmediata</span>
+                  <span class="dest-choice-title">Mostrador</span>
+                  <span class="dest-choice-desc">Venta rapida sin envio</span>
                 </button>
                 <button type="button" id="chk-dest-cliente" class="dest-choice-card">
                   <span class="dest-choice-title">Cliente y entrega</span>
-                  <span class="dest-choice-desc">Guardar cliente y programar envio</span>
+                  <span class="dest-choice-desc">Guardar cliente y fecha de entrega</span>
                 </button>
               </div>
             </div>
 
-            <div id="chk-panel-general" class="info-box">
-              Venta directa de mostrador. No genera entrega programada.
+            <div id="chk-panel-general">
+              <div id="chk-panel-general-info" class="info-box">
+                Venta directa de mostrador (sin envio programado).
+              </div>
+              <div id="chk-panel-nombre-parcial" class="chk-partial-box hidden">
+                <div class="field">
+                  <label for="chk-nombre-pendiente">Nombre para esta nota pendiente (opcional)</label>
+                  <input
+                    type="text"
+                    id="chk-nombre-pendiente"
+                    class="input"
+                    maxlength="150"
+                    value="${escaparHtml(estado.nombrePendiente)}"
+                    placeholder="Ej. Juan Perez - Obra Norte"
+                  >
+                </div>
+                <div class="field">
+                  <label for="chk-tel-pendiente">Telefono (opcional)</label>
+                  <input
+                    type="text"
+                    id="chk-tel-pendiente"
+                    class="input"
+                    maxlength="60"
+                    value="${escaparHtml(estado.telefonoPendiente)}"
+                    placeholder="555-000-0000"
+                  >
+                </div>
+                <div class="text-muted" style="font-size:12px;">
+                  Si lo deja vacio, podra asignarlo despues en "Por cobrar".
+                </div>
+              </div>
             </div>
 
             <div id="chk-panel-cliente" class="hidden" style="display:flex;flex-direction:column;gap:12px;">
@@ -912,71 +936,29 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
           </div>
 
           <div class="checkout-pay-panel">
-            <div class="checkout-section-label">2. Modalidad y pago en efectivo</div>
+            <div class="checkout-section-label">2. Cobro</div>
 
-            <div class="chk-pay-tabs" role="group" aria-label="Modalidad de pago">
+            <div class="pos-summary-row pos-summary-total">
+              <div>
+                <div>Total a cobrar</div>
+                <div style="font-size:11.5px;font-weight:500;opacity:0.85;">
+                  ${totalItems} ${totalItems === 1 ? 'producto' : 'productos'} en nota
+                </div>
+              </div>
+              <span class="num">${formatearMoneda(total)}</span>
+            </div>
+
+            <div class="chk-pay-tabs" role="group" aria-label="Como paga el cliente">
               <button type="button" id="chk-mod-completo" class="chk-pay-tab">
                 Pago completo
               </button>
               <button type="button" id="chk-mod-parcial" class="chk-pay-tab">
-                Pago parcial
+                Anticipo / Pendiente
               </button>
             </div>
 
-            <div class="pos-summary-row">
-              <span>Partidas en carrito</span>
-              <strong class="num">${totalItems} ${totalItems === 1 ? 'producto' : 'productos'}</strong>
-            </div>
-            <div class="pos-summary-row">
-              <span>Subtotal</span>
-              <strong class="num">${formatearMoneda(subtotal)}</strong>
-            </div>
-            <div class="pos-summary-row pos-summary-total">
-              <span>Total de la nota</span>
-              <span class="num">${formatearMoneda(total)}</span>
-            </div>
-
-            <div id="chk-panel-parcial" class="chk-partial-box hidden">
-              <div class="field">
-                <label for="chk-monto-anticipo">Anticipo a pagar ($)</label>
-                <input
-                  type="text"
-                  id="chk-monto-anticipo"
-                  class="input num"
-                  inputmode="decimal"
-                  autocomplete="off"
-                  value="${escaparHtml(estado.montoAnticipoTexto)}"
-                  placeholder="Ej. 500.00"
-                >
-              </div>
-              <div class="field">
-                <label for="chk-nombre-pendiente" id="chk-nombre-pendiente-label">
-                  Nombre asignado a la nota por cobrar
-                </label>
-                <input
-                  type="text"
-                  id="chk-nombre-pendiente"
-                  class="input"
-                  maxlength="150"
-                  value="${escaparHtml(estado.nombrePendiente)}"
-                  placeholder="Ej. Juan Perez - Obra Norte (puede asignarlo despues)"
-                >
-              </div>
-              <div class="field" id="chk-wrap-tel-pendiente">
-                <label for="chk-tel-pendiente">Telefono de contacto (opcional)</label>
-                <input
-                  type="text"
-                  id="chk-tel-pendiente"
-                  class="input"
-                  maxlength="60"
-                  value="${escaparHtml(estado.telefonoPendiente)}"
-                  placeholder="555-000-0000"
-                >
-              </div>
-            </div>
-
             <div class="field" style="margin-top:4px;">
-              <label for="chk-dinero-recibido" id="chk-label-recibido">Dinero recibido del cliente</label>
+              <label for="chk-dinero-recibido" id="chk-label-recibido">Efectivo que entrega el cliente ($)</label>
               <div class="pos-payment-input-row">
                 <input
                   type="text"
@@ -988,7 +970,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
                   value="${escaparHtml(estado.dineroRecibidoTexto)}"
                 >
                 <button type="button" id="chk-pago-exacto" class="btn btn-secondary">
-                  Pago exacto
+                  Exacto
                 </button>
               </div>
             </div>
@@ -1012,16 +994,14 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     const btnGeneral = root.querySelector('#chk-dest-general');
     const btnCliente = root.querySelector('#chk-dest-cliente');
     const panelGeneral = root.querySelector('#chk-panel-general');
+    const panelGeneralInfo = root.querySelector('#chk-panel-general-info');
+    const panelNombreParcial = root.querySelector('#chk-panel-nombre-parcial');
     const panelCliente = root.querySelector('#chk-panel-cliente');
     const clienteDinamico = root.querySelector('#chk-cliente-dinamico');
     const inputNota = root.querySelector('#chk-nota-venta');
     const btnModCompleto = root.querySelector('#chk-mod-completo');
     const btnModParcial = root.querySelector('#chk-mod-parcial');
-    const panelParcial = root.querySelector('#chk-panel-parcial');
-    const inputMontoAnticipo = root.querySelector('#chk-monto-anticipo');
     const inputNombrePendiente = root.querySelector('#chk-nombre-pendiente');
-    const labelNombrePendiente = root.querySelector('#chk-nombre-pendiente-label');
-    const wrapTelPendiente = root.querySelector('#chk-wrap-tel-pendiente');
     const inputTelPendiente = root.querySelector('#chk-tel-pendiente');
     const labelRecibido = root.querySelector('#chk-label-recibido');
     const inputPago = root.querySelector('#chk-dinero-recibido');
@@ -1033,6 +1013,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       const {
         total: tot,
         esParcial,
+        excedeTotalParcial,
         anticipoValido,
         montoAnticipo,
         saldoPendiente,
@@ -1049,21 +1030,21 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
           Boolean(estado.fechaEntrega));
 
       if (esParcial) {
-        if (!anticipoValido) {
-          estadoPagoEl.className = 'pos-payment-status pos-payment-insufficient';
+        if (!recibidoValido || dineroRecibido <= 0) {
+          estadoPagoEl.className = 'pos-payment-status pos-payment-neutral';
           estadoPagoEl.innerHTML = `
-            <span>Anticipo requerido</span>
-            <span class="num">Mayor a $0 y menor a ${formatearMoneda(tot)}</span>
+            <span>Escriba cuanto deja hoy de anticipo</span>
+            <span class="num">${formatearMoneda(tot)} pendiente</span>
           `;
           btnConfirmar.disabled = true;
           return;
         }
 
-        if (!recibidoValido || dineroRecibido < montoAnticipo) {
+        if (excedeTotalParcial || !anticipoValido) {
           estadoPagoEl.className = 'pos-payment-status pos-payment-insufficient';
           estadoPagoEl.innerHTML = `
-            <span>Faltante para anticipo</span>
-            <span class="num">${formatearMoneda(faltante)}</span>
+            <span>Cubre el total. Use "Pago completo".</span>
+            <span class="num">${formatearMoneda(tot)}</span>
           `;
           btnConfirmar.disabled = true;
           return;
@@ -1072,22 +1053,32 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         estadoPagoEl.className = 'pos-payment-status pos-payment-pending';
         estadoPagoEl.innerHTML = `
           <div class="pos-payment-pending-row">
-            <span>Saldo pendiente por cobrar</span>
+            <span>Queda pendiente por cobrar</span>
             <span class="num">${formatearMoneda(saldoPendiente)}</span>
           </div>
           <div class="pos-payment-pending-row" style="font-size:12.5px;font-weight:500;">
-            <span>${cambio > 0 ? 'Cambio por el anticipo' : 'Anticipo cubierto'}</span>
-            <span class="num">${cambio > 0 ? formatearMoneda(cambio) : formatearMoneda(montoAnticipo)}</span>
+            <span>Paga hoy (anticipo)</span>
+            <span class="num">${formatearMoneda(montoAnticipo)}</span>
           </div>
         `;
         btnConfirmar.disabled = estado.procesando || !clienteListo;
         return;
       }
 
-      if (!recibidoValido || dineroRecibido < tot) {
+      if (!recibidoValido) {
+        estadoPagoEl.className = 'pos-payment-status pos-payment-neutral';
+        estadoPagoEl.innerHTML = `
+          <span>Ingrese el efectivo recibido</span>
+          <span class="num">${formatearMoneda(tot)}</span>
+        `;
+        btnConfirmar.disabled = true;
+        return;
+      }
+
+      if (dineroRecibido < tot) {
         estadoPagoEl.className = 'pos-payment-status pos-payment-insufficient';
         estadoPagoEl.innerHTML = `
-          <span>Cantidad faltante</span>
+          <span>Falta dinero</span>
           <span class="num">${formatearMoneda(faltante)}</span>
         `;
         btnConfirmar.disabled = true;
@@ -1104,36 +1095,26 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
     function sincronizarModalidadPagoModal() {
       const esParcial = estado.modalidadPago === 'PARCIAL';
+      const esGeneral = estado.tipoVenta === 'GENERAL';
       btnModCompleto?.classList.toggle('active', !esParcial);
       btnModParcial?.classList.toggle('active', esParcial);
-      panelParcial?.classList.toggle('hidden', !esParcial);
+
+      panelGeneralInfo?.classList.toggle('hidden', esGeneral && esParcial);
+      panelNombreParcial?.classList.toggle('hidden', !(esGeneral && esParcial));
 
       if (esParcial) {
         if (labelRecibido) {
-          labelRecibido.textContent = 'Dinero recibido por el anticipo';
+          labelRecibido.textContent = 'Anticipo que paga hoy ($)';
         }
-        if (btnExacto) {
-          btnExacto.textContent = 'Exacto anticipo';
-        }
+        btnExacto?.classList.add('hidden');
         if (btnConfirmar) {
           btnConfirmar.textContent = 'Guardar nota con saldo pendiente';
         }
-        const esCli = estado.tipoVenta === 'CLIENTE';
-        if (wrapTelPendiente) {
-          wrapTelPendiente.classList.toggle('hidden', esCli);
-        }
-        if (labelNombrePendiente) {
-          labelNombrePendiente.textContent = esCli
-            ? 'Nombre asignado (opcional; por defecto usa cliente)'
-            : 'Nombre asignado a la nota por cobrar (opcional)';
-        }
       } else {
         if (labelRecibido) {
-          labelRecibido.textContent = 'Dinero recibido del cliente';
+          labelRecibido.textContent = 'Efectivo que entrega el cliente ($)';
         }
-        if (btnExacto) {
-          btnExacto.textContent = 'Pago exacto';
-        }
+        btnExacto?.classList.remove('hidden');
         if (btnConfirmar) {
           btnConfirmar.textContent = 'Confirmar venta';
         }
@@ -1611,25 +1592,13 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     btnModCompleto?.addEventListener('click', () => {
       estado.modalidadPago = 'COMPLETO';
       sincronizarModalidadPagoModal();
+      inputPago?.focus();
     });
 
     btnModParcial?.addEventListener('click', () => {
       estado.modalidadPago = 'PARCIAL';
       sincronizarModalidadPagoModal();
-      inputMontoAnticipo?.focus();
-    });
-
-    inputMontoAnticipo?.addEventListener('keydown', (event) => {
-      bloquearTeclasNoNumericas(event, { permitirDecimal: true });
-    });
-
-    inputMontoAnticipo?.addEventListener('input', (event) => {
-      const limpio = sanitizarEntradaDecimal(event.target.value, 2);
-      if (event.target.value !== limpio) {
-        event.target.value = limpio;
-      }
-      estado.montoAnticipoTexto = limpio;
-      actualizarEstadoPagoModal();
+      inputPago?.focus();
     });
 
     inputNombrePendiente?.addEventListener('input', (e) => {
@@ -1658,10 +1627,11 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     });
 
     btnExacto.addEventListener('click', () => {
-      const { total: tot, esParcial, anticipoValido, montoAnticipo } =
-        calcularTotalesCarrito();
-      const objetivo = esParcial && anticipoValido ? montoAnticipo : tot;
-      estado.dineroRecibidoTexto = objetivo.toFixed(2);
+      if (estado.modalidadPago === 'PARCIAL') {
+        return;
+      }
+      const { total: tot } = calcularTotalesCarrito();
+      estado.dineroRecibidoTexto = tot.toFixed(2);
       inputPago.value = estado.dineroRecibidoTexto;
       actualizarEstadoPagoModal();
     });
@@ -1705,6 +1675,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     const {
       total,
       esParcial,
+      excedeTotalParcial,
       anticipoValido,
       montoAnticipo,
       recibidoValido,
@@ -1715,14 +1686,9 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     if (esParcial) {
       if (!anticipoValido) {
         mostrarToast(
-          'Indique un monto de anticipo valido mayor a cero y menor al total de la nota.',
-          'error'
-        );
-        return;
-      }
-      if (!recibidoValido || dineroRecibido < montoAnticipo) {
-        mostrarToast(
-          `Efectivo insuficiente para cubrir el anticipo. Faltan ${formatearMoneda(faltante)}.`,
+          excedeTotalParcial
+            ? 'El monto cubre el total completo. Seleccione "Pago completo".'
+            : 'Indique cuanto paga hoy de anticipo (mayor a cero y menor al total).',
           'error'
         );
         return;
@@ -1745,7 +1711,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
           producto_id: item.producto_id,
           cantidad: item.cantidad
         })),
-        dinero_recibido: dineroRecibido,
+        dinero_recibido: esParcial ? montoAnticipo : dineroRecibido,
         modalidad_pago: estado.modalidadPago,
         tipo_venta: estado.tipoVenta,
         nota_venta: estado.notaVenta.trim() || null,
@@ -1754,11 +1720,13 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
       if (esParcial) {
         payload.monto_anticipo = montoAnticipo;
-        if (estado.nombrePendiente.trim()) {
-          payload.nombre_pendiente = estado.nombrePendiente.trim();
-        }
-        if (estado.tipoVenta === 'GENERAL' && estado.telefonoPendiente.trim()) {
-          payload.telefono_pendiente = estado.telefonoPendiente.trim();
+        if (estado.tipoVenta === 'GENERAL') {
+          if (estado.nombrePendiente.trim()) {
+            payload.nombre_pendiente = estado.nombrePendiente.trim();
+          }
+          if (estado.telefonoPendiente.trim()) {
+            payload.telefono_pendiente = estado.telefonoPendiente.trim();
+          }
         }
       }
 

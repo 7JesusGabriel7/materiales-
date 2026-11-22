@@ -438,8 +438,8 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
             </div>
 
             <div class="form-grid">
-              <div class="field">
-                <label for="pca-monto">Monto a abonar ($) *</label>
+              <div class="field col-span-2">
+                <label for="pca-monto">Monto que abona hoy ($) *</label>
                 <div class="pos-payment-input-row">
                   <input
                     type="text"
@@ -449,24 +449,8 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
                     autocomplete="off"
                     value="${saldoActual.toFixed(2)}"
                   >
-                  <button type="button" class="btn btn-secondary btn-sm" id="pca-liquidar-todo">
-                    Liquidar saldo
-                  </button>
-                </div>
-              </div>
-              <div class="field">
-                <label for="pca-recibido">Dinero recibido ($) *</label>
-                <div class="pos-payment-input-row">
-                  <input
-                    type="text"
-                    id="pca-recibido"
-                    class="input num"
-                    inputmode="decimal"
-                    autocomplete="off"
-                    value="${saldoActual.toFixed(2)}"
-                  >
-                  <button type="button" class="btn btn-secondary btn-sm" id="pca-exacto">
-                    Exacto
+                  <button type="button" class="btn btn-secondary" id="pca-liquidar-todo">
+                    Liquidar todo
                   </button>
                 </div>
               </div>
@@ -498,14 +482,12 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
       }
 
       const inputMonto = root.querySelector('#pca-monto');
-      const inputRecibido = root.querySelector('#pca-recibido');
       const inputNota = root.querySelector('#pca-nota');
       const estadoEl = root.querySelector('#pca-estado');
       const btnConfirmar = root.querySelector('#pca-confirmar');
 
       function actualizarEstadoAbono() {
         const montoNum = Number(inputMonto.value);
-        const recNum = Number(inputRecibido.value);
 
         const montoValido =
           inputMonto.value.trim() !== '' &&
@@ -523,24 +505,8 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
           return;
         }
 
-        const recValido =
-          inputRecibido.value.trim() !== '' &&
-          Number.isFinite(recNum) &&
-          recNum >= montoNum;
-
-        if (!recValido) {
-          const faltante = redondearMoneda(montoNum - (Number.isFinite(recNum) ? recNum : 0));
-          estadoEl.className = 'pos-payment-status pos-payment-insufficient';
-          estadoEl.innerHTML = `
-            <span>Efectivo insuficiente para el abono</span>
-            <span class="num">Faltan ${formatearMoneda(faltante)}</span>
-          `;
-          btnConfirmar.disabled = true;
-          return;
-        }
-
-        const cambio = redondearMoneda(recNum - montoNum);
-        const saldoNuevo = redondearMoneda(Math.max(0, saldoActual - montoNum));
+        const montoAbono = redondearMoneda(montoNum);
+        const saldoNuevo = redondearMoneda(Math.max(0, saldoActual - montoAbono));
         const liquidada = saldoNuevo <= 0;
 
         estadoEl.className = liquidada
@@ -548,12 +514,8 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
           : 'pos-payment-status pos-payment-pending';
         estadoEl.innerHTML = `
           <div class="pos-payment-pending-row">
-            <span>${liquidada ? 'La nota quedara LIQUIDADA ($0.00)' : 'Saldo pendiente restante'}</span>
+            <span>${liquidada ? 'La nota quedara LIQUIDADA ($0.00 pendiente)' : 'Queda pendiente por cobrar'}</span>
             <span class="num">${formatearMoneda(saldoNuevo)}</span>
-          </div>
-          <div class="pos-payment-pending-row" style="font-size:12.5px;font-weight:500;">
-            <span>Cambio a entregar</span>
-            <span class="num">${formatearMoneda(cambio)}</span>
           </div>
         `;
         btnConfirmar.textContent = liquidada ? 'Liquidar nota' : 'Registrar abono';
@@ -561,9 +523,7 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
       }
 
       root.querySelector('#pca-liquidar-todo')?.addEventListener('click', () => {
-        const texto = saldoActual.toFixed(2);
-        inputMonto.value = texto;
-        inputRecibido.value = texto;
+        inputMonto.value = saldoActual.toFixed(2);
         actualizarEstadoAbono();
       });
 
@@ -578,31 +538,13 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
         actualizarEstadoAbono();
       });
 
-      inputRecibido.addEventListener('keydown', (e) => {
-        bloquearTeclasNoNumericas(e, { permitirDecimal: true });
-      });
-      inputRecibido.addEventListener('input', (e) => {
-        const limpio = sanitizarEntradaDecimal(e.target.value, 2);
-        if (e.target.value !== limpio) {
-          e.target.value = limpio;
-        }
-        actualizarEstadoAbono();
-      });
-
-      root.querySelector('#pca-exacto')?.addEventListener('click', () => {
-        const montoNum = Number(inputMonto.value);
-        if (Number.isFinite(montoNum) && montoNum > 0) {
-          inputRecibido.value = redondearMoneda(montoNum).toFixed(2);
-          actualizarEstadoAbono();
-        }
-      });
-
       btnConfirmar.addEventListener('click', async () => {
+        const montoAbono = redondearMoneda(Number(inputMonto.value));
         btnConfirmar.disabled = true;
         try {
           const resp = await api.post(`/ventas/${ventaId}/abonos`, {
-            monto: Number(inputMonto.value),
-            dinero_recibido: Number(inputRecibido.value),
+            monto: montoAbono,
+            dinero_recibido: montoAbono,
             nota: inputNota.value.trim() || null
           });
           mostrarToast(resp.mensaje || 'Abono registrado correctamente.', 'success');
