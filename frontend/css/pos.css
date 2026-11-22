@@ -748,40 +748,6 @@
   gap: 10px;
 }
 
-.chk-pct-chips {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.chk-pct-chip {
-  padding: 6px 4px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-subtle);
-  color: var(--text-primary);
-  font-size: 12.5px;
-  font-weight: 700;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-
-.chk-pct-chip:hover {
-  border-color: var(--accent-primary);
-  background-color: var(--accent-primary-soft);
-}
-
-.chk-pct-chip.active {
-  background-color: var(--accent-dark);
-  border-color: var(--accent-dark);
-  color: var(--text-inverse);
-}
-
-.chk-partial-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
 .pos-payment-pending {
   background-color: var(--warning-bg);
   color: var(--warning-text);

@@ -54,7 +54,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     vistaCatalogo: leerPreferenciaVistaCatalogo(),
     dineroRecibidoTexto: '',
     modalidadPago: 'COMPLETO',
-    porcentajeAnticipoTexto: '50',
     montoAnticipoTexto: '',
     nombrePendiente: '',
     telefonoPendiente: '',
@@ -113,10 +112,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     const montoAnticipo = anticipoValido ? redondearMoneda(montoAntNum) : 0;
     const saldoPendiente =
       esParcial && anticipoValido ? redondearMoneda(total - montoAnticipo) : 0;
-    const porcentajeAnticipo =
-      esParcial && anticipoValido && total > 0
-        ? Math.round((montoAnticipo / total) * 10000) / 100
-        : 100;
 
     const recibidoNum = Number(estado.dineroRecibidoTexto);
     const recibidoValido =
@@ -135,7 +130,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       anticipoValido,
       montoAnticipo,
       saldoPendiente,
-      porcentajeAnticipo,
       recibidoValido,
       dineroRecibido,
       cambio: diferencia >= 0 ? diferencia : 0,
@@ -147,7 +141,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     estado.carrito = [];
     estado.dineroRecibidoTexto = '';
     estado.modalidadPago = 'COMPLETO';
-    estado.porcentajeAnticipoTexto = '50';
     estado.montoAnticipoTexto = '';
     estado.nombrePendiente = '';
     estado.telefonoPendiente = '';
@@ -923,10 +916,10 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
             <div class="chk-pay-tabs" role="group" aria-label="Modalidad de pago">
               <button type="button" id="chk-mod-completo" class="chk-pay-tab">
-                Pago completo (100%)
+                Pago completo
               </button>
               <button type="button" id="chk-mod-parcial" class="chk-pay-tab">
-                Pago parcial (anticipo)
+                Pago parcial
               </button>
             </div>
 
@@ -944,40 +937,17 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
             </div>
 
             <div id="chk-panel-parcial" class="chk-partial-box hidden">
-              <div style="font-size:12px;font-weight:700;color:var(--text-secondary);">
-                Porcentaje o monto de anticipo
-              </div>
-              <div class="chk-pct-chips">
-                <button type="button" class="chk-pct-chip" data-chk-pct="25">25%</button>
-                <button type="button" class="chk-pct-chip" data-chk-pct="30">30%</button>
-                <button type="button" class="chk-pct-chip" data-chk-pct="50">50%</button>
-                <button type="button" class="chk-pct-chip" data-chk-pct="75">75%</button>
-              </div>
-              <div class="chk-partial-grid">
-                <div class="field">
-                  <label for="chk-pct-anticipo">Porcentaje (%)</label>
-                  <input
-                    type="text"
-                    id="chk-pct-anticipo"
-                    class="input num"
-                    inputmode="decimal"
-                    autocomplete="off"
-                    value="${escaparHtml(estado.porcentajeAnticipoTexto)}"
-                    placeholder="50"
-                  >
-                </div>
-                <div class="field">
-                  <label for="chk-monto-anticipo">Anticipo a pagar ($)</label>
-                  <input
-                    type="text"
-                    id="chk-monto-anticipo"
-                    class="input num"
-                    inputmode="decimal"
-                    autocomplete="off"
-                    value="${escaparHtml(estado.montoAnticipoTexto)}"
-                    placeholder="0.00"
-                  >
-                </div>
+              <div class="field">
+                <label for="chk-monto-anticipo">Anticipo a pagar ($)</label>
+                <input
+                  type="text"
+                  id="chk-monto-anticipo"
+                  class="input num"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  value="${escaparHtml(estado.montoAnticipoTexto)}"
+                  placeholder="Ej. 500.00"
+                >
               </div>
               <div class="field">
                 <label for="chk-nombre-pendiente" id="chk-nombre-pendiente-label">
@@ -1048,7 +1018,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     const btnModCompleto = root.querySelector('#chk-mod-completo');
     const btnModParcial = root.querySelector('#chk-mod-parcial');
     const panelParcial = root.querySelector('#chk-panel-parcial');
-    const inputPctAnticipo = root.querySelector('#chk-pct-anticipo');
     const inputMontoAnticipo = root.querySelector('#chk-monto-anticipo');
     const inputNombrePendiente = root.querySelector('#chk-nombre-pendiente');
     const labelNombrePendiente = root.querySelector('#chk-nombre-pendiente-label');
@@ -1060,16 +1029,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     const estadoPagoEl = root.querySelector('#chk-estado-pago');
     const btnConfirmar = root.querySelector('#chk-confirmar-venta');
 
-    function sincronizarChipsPorcentaje() {
-      const pctAct = Number(estado.porcentajeAnticipoTexto);
-      root.querySelectorAll('[data-chk-pct]').forEach((chip) => {
-        chip.classList.toggle(
-          'active',
-          Math.abs(Number(chip.dataset.chkPct) - pctAct) < 0.01
-        );
-      });
-    }
-
     function actualizarEstadoPagoModal() {
       const {
         total: tot,
@@ -1077,7 +1036,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         anticipoValido,
         montoAnticipo,
         saldoPendiente,
-        porcentajeAnticipo,
         recibidoValido,
         dineroRecibido,
         cambio,
@@ -1104,7 +1062,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         if (!recibidoValido || dineroRecibido < montoAnticipo) {
           estadoPagoEl.className = 'pos-payment-status pos-payment-insufficient';
           estadoPagoEl.innerHTML = `
-            <span>Faltante para anticipo (${porcentajeAnticipo}%)</span>
+            <span>Faltante para anticipo</span>
             <span class="num">${formatearMoneda(faltante)}</span>
           `;
           btnConfirmar.disabled = true;
@@ -1118,7 +1076,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
             <span class="num">${formatearMoneda(saldoPendiente)}</span>
           </div>
           <div class="pos-payment-pending-row" style="font-size:12.5px;font-weight:500;">
-            <span>${cambio > 0 ? 'Cambio por el anticipo' : `Anticipo cubierto (${porcentajeAnticipo}%)`}</span>
+            <span>${cambio > 0 ? 'Cambio por el anticipo' : 'Anticipo cubierto'}</span>
             <span class="num">${cambio > 0 ? formatearMoneda(cambio) : formatearMoneda(montoAnticipo)}</span>
           </div>
         `;
@@ -1151,14 +1109,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       panelParcial?.classList.toggle('hidden', !esParcial);
 
       if (esParcial) {
-        if (!estado.montoAnticipoTexto) {
-          const pctInicial = Number(estado.porcentajeAnticipoTexto) || 50;
-          const montoCalc = redondearMoneda((total * pctInicial) / 100);
-          estado.montoAnticipoTexto = montoCalc.toFixed(2);
-          if (inputMontoAnticipo) {
-            inputMontoAnticipo.value = estado.montoAnticipoTexto;
-          }
-        }
         if (labelRecibido) {
           labelRecibido.textContent = 'Dinero recibido por el anticipo';
         }
@@ -1177,7 +1127,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
             ? 'Nombre asignado (opcional; por defecto usa cliente)'
             : 'Nombre asignado a la nota por cobrar (opcional)';
         }
-        sincronizarChipsPorcentaje();
       } else {
         if (labelRecibido) {
           labelRecibido.textContent = 'Dinero recibido del cliente';
@@ -1666,49 +1615,8 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
     btnModParcial?.addEventListener('click', () => {
       estado.modalidadPago = 'PARCIAL';
-      const pct = Number(estado.porcentajeAnticipoTexto) || 50;
-      const calc = redondearMoneda((total * pct) / 100);
-      estado.montoAnticipoTexto = calc.toFixed(2);
-      if (inputMontoAnticipo) {
-        inputMontoAnticipo.value = estado.montoAnticipoTexto;
-      }
       sincronizarModalidadPagoModal();
-    });
-
-    root.querySelectorAll('[data-chk-pct]').forEach((chip) => {
-      chip.addEventListener('click', () => {
-        const pct = Number(chip.dataset.chkPct);
-        estado.porcentajeAnticipoTexto = String(pct);
-        const montoCalc = redondearMoneda((total * pct) / 100);
-        estado.montoAnticipoTexto = montoCalc.toFixed(2);
-        if (inputPctAnticipo) inputPctAnticipo.value = estado.porcentajeAnticipoTexto;
-        if (inputMontoAnticipo) inputMontoAnticipo.value = estado.montoAnticipoTexto;
-        sincronizarChipsPorcentaje();
-        actualizarEstadoPagoModal();
-      });
-    });
-
-    inputPctAnticipo?.addEventListener('keydown', (event) => {
-      bloquearTeclasNoNumericas(event, { permitirDecimal: true });
-    });
-
-    inputPctAnticipo?.addEventListener('input', (event) => {
-      const limpio = sanitizarEntradaDecimal(event.target.value, 2);
-      if (event.target.value !== limpio) {
-        event.target.value = limpio;
-      }
-      estado.porcentajeAnticipoTexto = limpio;
-      const pct = Number(limpio);
-      if (limpio !== '' && Number.isFinite(pct) && pct > 0 && pct < 100) {
-        const montoCalc = redondearMoneda((total * pct) / 100);
-        estado.montoAnticipoTexto = montoCalc.toFixed(2);
-        if (inputMontoAnticipo) inputMontoAnticipo.value = estado.montoAnticipoTexto;
-      } else if (limpio === '') {
-        estado.montoAnticipoTexto = '';
-        if (inputMontoAnticipo) inputMontoAnticipo.value = '';
-      }
-      sincronizarChipsPorcentaje();
-      actualizarEstadoPagoModal();
+      inputMontoAnticipo?.focus();
     });
 
     inputMontoAnticipo?.addEventListener('keydown', (event) => {
@@ -1721,19 +1629,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         event.target.value = limpio;
       }
       estado.montoAnticipoTexto = limpio;
-      const montoNum = Number(limpio);
-      if (limpio !== '' && Number.isFinite(montoNum) && total > 0 && montoNum > 0) {
-        const pctCalc = Math.min(
-          99.99,
-          Math.max(0.01, Math.round((montoNum / total) * 10000) / 100)
-        );
-        estado.porcentajeAnticipoTexto = String(pctCalc);
-        if (inputPctAnticipo) inputPctAnticipo.value = estado.porcentajeAnticipoTexto;
-      } else if (limpio === '') {
-        estado.porcentajeAnticipoTexto = '';
-        if (inputPctAnticipo) inputPctAnticipo.value = '';
-      }
-      sincronizarChipsPorcentaje();
       actualizarEstadoPagoModal();
     });
 
@@ -1812,7 +1707,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       esParcial,
       anticipoValido,
       montoAnticipo,
-      porcentajeAnticipo,
       recibidoValido,
       dineroRecibido,
       faltante
@@ -1821,7 +1715,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     if (esParcial) {
       if (!anticipoValido) {
         mostrarToast(
-          'Indique un monto o porcentaje de anticipo valido menor al total de la nota.',
+          'Indique un monto de anticipo valido mayor a cero y menor al total de la nota.',
           'error'
         );
         return;
@@ -1860,7 +1754,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
       if (esParcial) {
         payload.monto_anticipo = montoAnticipo;
-        payload.porcentaje_anticipo = porcentajeAnticipo;
         if (estado.nombrePendiente.trim()) {
           payload.nombre_pendiente = estado.nombrePendiente.trim();
         }

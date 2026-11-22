@@ -807,8 +807,6 @@ async function generarPdfNotaVenta({
     const montoPagado = esParcial
       ? Number(venta.monto_pagado || 0)
       : totalNum;
-    const pctPagado =
-      totalNum > 0 ? Math.round((montoPagado / totalNum) * 10000) / 100 : 100;
 
     const estadoDoc = esParcial
       ? saldoPendiente > 0
@@ -833,8 +831,8 @@ async function generarPdfNotaVenta({
 
     const condicionPagoTexto = esParcial
       ? saldoPendiente > 0
-        ? `Pago parcial (${Number(venta.porcentaje_anticipo || pctPagado)}% anticipo) - Saldo pendiente`
-        : 'Pago parcial liquidado al 100%'
+        ? 'Pago parcial (con saldo pendiente)'
+        : 'Pago parcial liquidado'
       : 'Pago completo de contado';
 
     const filasDatos = [
@@ -880,7 +878,7 @@ async function generarPdfNotaVenta({
 
     if (esParcial) {
       filasTotalesSecundarias.push({
-        etiqueta: `Pagado (${pctPagado}%)`,
+        etiqueta: 'Pagado / Abonado',
         valor: formatearMoneda(montoPagado),
         antesDeTotal: false,
         negrita: true

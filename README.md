@@ -121,7 +121,7 @@ docker compose exec -T db sh -c 'mysqldump -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "
 
 ## Modulos del Sistema
 
-1. **Ventas (POS)**: Vista en tarjetas y lista, busqueda por nombre, filtro por categoria, soporte de cantidades enteras y fraccionarias (minimo 1), pago completo o pago parcial por porcentaje/monto con calculo de saldo pendiente, flujo de cobro general o con cliente y entrega programada, creacion de presupuestos sin afectar stock, ticket termico de 58 mm y descarga en PDF.
+1. **Ventas (POS)**: Vista en tarjetas y lista, busqueda por nombre, filtro por categoria, soporte de cantidades enteras y fraccionarias (minimo 1), pago completo o pago parcial por monto de anticipo con calculo de saldo pendiente, flujo de cobro general o con cliente y entrega programada, creacion de presupuestos sin afectar stock, ticket termico de 58 mm y descarga en PDF.
 2. **Presupuestos**: Registro y consulta de cotizaciones sin afectar ventas ni inventario, carga en el POS para concretar venta, ticket de 58 mm y descarga en PDF.
 3. **Entregas programadas y clientes**: Seguimiento de pedidos con cliente, fecha/horario de entrega, direccion, notas de venta, cambio de estado (Pendiente / Entregado), directorio de clientes y descarga de nota en PDF.
 4. **Por cobrar (pagos parciales)**: Listado de notas con anticipo y saldo pendiente, asignacion o edicion de nombre de referencia, registro de abonos y liquidacion total, historial de pagos, ticket de 58 mm actualizado y PDF.

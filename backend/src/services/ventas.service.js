@@ -453,7 +453,7 @@ async function registrarVenta(datos = {}) {
           cambio,
           total,
           saldoPendiente,
-          `Anticipo inicial (${porcentajeAnticipo}%)`
+          'Anticipo inicial'
         ]
       );
     }

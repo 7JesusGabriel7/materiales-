@@ -205,8 +205,6 @@ export function generarHtmlTicket58mm({
     saldoPendiente > 0;
   const totalNum = Number(venta.total || 0);
   const montoPagado = esParcial ? Number(venta.monto_pagado || 0) : totalNum;
-  const pctPagado =
-    totalNum > 0 ? Math.round((montoPagado / totalNum) * 10000) / 100 : 100;
 
   const bandaEstadoPago = esParcial
     ? `<div class="ticket-doc-type">${
@@ -264,7 +262,7 @@ export function generarHtmlTicket58mm({
   const bloqueTotalesDetalle = esParcial
     ? `
         <div class="ticket-total-row">
-          <span>Pagado (${pctPagado}%):</span>
+          <span>Pagado:</span>
           <span>${formatearMoneda(montoPagado)}</span>
         </div>
         <div class="ticket-total-row ticket-grand-total">

@@ -192,9 +192,7 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
     tbody.innerHTML = estado.notas
       .map((n) => {
         const pendiente = n.estado_pago === 'PENDIENTE' && Number(n.saldo_pendiente) > 0;
-        const totalNum = Number(n.total || 0);
         const pagadoNum = Number(n.monto_pagado || 0);
-        const pct = totalNum > 0 ? Math.round((pagadoNum / totalNum) * 10000) / 100 : 100;
         const nombreMostrar = n.nombre_pendiente || n.cliente_nombre || '';
 
         const nombreHtml = nombreMostrar
@@ -217,10 +215,7 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
               ${metaContacto ? `<div class="text-muted" style="font-size:11.5px;">${escaparHtml(metaContacto)}</div>` : ''}
             </td>
             <td class="text-right num">${formatearMoneda(n.total)}</td>
-            <td class="text-right num">
-              ${formatearMoneda(pagadoNum)}
-              <div class="text-muted" style="font-size:11.5px;">(${pct}%)</div>
-            </td>
+            <td class="text-right num">${formatearMoneda(pagadoNum)}</td>
             <td class="text-right num">
               <strong style="color:${pendiente ? 'var(--warning-text)' : 'var(--success-text)'};">
                 ${formatearMoneda(n.saldo_pendiente)}
@@ -442,26 +437,22 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
               </div>
             </div>
 
-            <div class="field">
-              <label>Accesos rapidos sobre saldo restante</label>
-              <div class="chk-pct-chips" style="grid-template-columns:repeat(3,minmax(0,1fr));">
-                <button type="button" class="chk-pct-chip" data-abono-frac="0.25">25% del saldo</button>
-                <button type="button" class="chk-pct-chip" data-abono-frac="0.5">50% del saldo</button>
-                <button type="button" class="chk-pct-chip" data-abono-frac="1">Liquidar 100%</button>
-              </div>
-            </div>
-
             <div class="form-grid">
               <div class="field">
                 <label for="pca-monto">Monto a abonar ($) *</label>
-                <input
-                  type="text"
-                  id="pca-monto"
-                  class="input num"
-                  inputmode="decimal"
-                  autocomplete="off"
-                  value="${saldoActual.toFixed(2)}"
-                >
+                <div class="pos-payment-input-row">
+                  <input
+                    type="text"
+                    id="pca-monto"
+                    class="input num"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    value="${saldoActual.toFixed(2)}"
+                  >
+                  <button type="button" class="btn btn-secondary btn-sm" id="pca-liquidar-todo">
+                    Liquidar saldo
+                  </button>
+                </div>
               </div>
               <div class="field">
                 <label for="pca-recibido">Dinero recibido ($) *</label>
@@ -569,15 +560,11 @@ export function crearModuloPorCobrar({ onCuentasModificadas }) {
         btnConfirmar.disabled = false;
       }
 
-      root.querySelectorAll('[data-abono-frac]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const frac = Number(btn.dataset.abonoFrac);
-          const calc = frac === 1 ? saldoActual : redondearMoneda(saldoActual * frac);
-          const texto = calc.toFixed(2);
-          inputMonto.value = texto;
-          inputRecibido.value = texto;
-          actualizarEstadoAbono();
-        });
+      root.querySelector('#pca-liquidar-todo')?.addEventListener('click', () => {
+        const texto = saldoActual.toFixed(2);
+        inputMonto.value = texto;
+        inputRecibido.value = texto;
+        actualizarEstadoAbono();
       });
 
       inputMonto.addEventListener('keydown', (e) => {
