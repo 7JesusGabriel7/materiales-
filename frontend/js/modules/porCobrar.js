@@ -28,15 +28,37 @@ export function crearModuloPorCobrar({
   const estado = {
     resumen: null,
     notas: [],
-    totalesFiltro: { cantidad_notas: 0, saldo_filtro: 0 },
+    totalesFiltro: { cantidad_notas: 0, pagado_filtro: 0, saldo_filtro: 0 },
     paginacion: { total: 0, pagina: 1, limite: 25, total_paginas: 1 },
     filtros: {
-      estado_pago: 'PENDIENTE',
+      estado_pago: 'TODAS',
       buscar: '',
       pagina: 1
     },
     renderizadoBase: false
   };
+
+  function actualizarTabsEstado() {
+    const r = estado.resumen;
+    const pend = r ? Number(r.notas_pendientes || 0) : null;
+    const liq = r ? Number(r.notas_liquidadas || 0) : null;
+
+    const etiquetas = {
+      TODAS: r ? `Todas (${pend + liq})` : 'Todas',
+      PENDIENTE: r ? `Pendientes (${pend})` : 'Pendientes',
+      PAGADA: r ? `Liquidadas (${liq})` : 'Liquidadas'
+    };
+
+    contenedor.querySelectorAll('[data-pc-tab]').forEach((btn) => {
+      const clave = btn.dataset.pcTab;
+      const activo = estado.filtros.estado_pago === clave;
+      btn.classList.toggle('active', activo);
+      btn.setAttribute('aria-selected', activo ? 'true' : 'false');
+      if (etiquetas[clave]) {
+        btn.textContent = etiquetas[clave];
+      }
+    });
+  }
 
   function renderizarBase() {
     if (estado.renderizadoBase) {
@@ -50,23 +72,19 @@ export function crearModuloPorCobrar({
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Notas por cobrar (pagos parciales)</h2>
-              <p class="card-subtitle">Consulte notas con saldo pendiente, asigne o edite un nombre y registre abonos hasta liquidar</p>
+              <h2 class="card-title">Notas por cobrar e historial de liquidadas</h2>
+              <p class="card-subtitle">Las notas pendientes y liquidadas se conservan permanentemente para llevar el control completo de pagos</p>
+            </div>
+            <div class="pos-view-switch" id="pc-tabs" role="tablist" aria-label="Filtrar notas por estado">
+              <button type="button" class="pos-view-btn active" data-pc-tab="TODAS" role="tab" aria-selected="true">Todas</button>
+              <button type="button" class="pos-view-btn" data-pc-tab="PENDIENTE" role="tab" aria-selected="false">Pendientes</button>
+              <button type="button" class="pos-view-btn" data-pc-tab="PAGADA" role="tab" aria-selected="false">Liquidadas</button>
             </div>
           </div>
 
           <div class="card-body">
             <div class="toolbar">
               <div class="toolbar-group">
-                <div class="field" style="min-width: 195px;">
-                  <label for="pc-estado">Estado de pago</label>
-                  <select id="pc-estado" class="select">
-                    <option value="PENDIENTE">Pendientes por cobrar</option>
-                    <option value="PAGADA">Liquidadas</option>
-                    <option value="TODAS">Todas las parciales</option>
-                  </select>
-                </div>
-
                 <div class="field field-grow">
                   <label for="pc-buscar">Buscar por nombre asignado, folio, telefono o nota</label>
                   <input
@@ -111,13 +129,20 @@ export function crearModuloPorCobrar({
     `;
 
     const aplicarConsulta = () => {
-      estado.filtros.estado_pago = contenedor.querySelector('#pc-estado').value;
       estado.filtros.buscar = contenedor.querySelector('#pc-buscar').value.trim();
       estado.filtros.pagina = 1;
       cargarLista();
     };
 
-    contenedor.querySelector('#pc-estado').addEventListener('change', aplicarConsulta);
+    contenedor.querySelectorAll('[data-pc-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        estado.filtros.estado_pago = btn.dataset.pcTab;
+        estado.filtros.pagina = 1;
+        actualizarTabsEstado();
+        cargarLista();
+      });
+    });
+
     contenedor.querySelector('#pc-btn-consultar').addEventListener('click', aplicarConsulta);
     contenedor.querySelector('#pc-buscar').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
@@ -126,12 +151,13 @@ export function crearModuloPorCobrar({
     });
 
     contenedor.querySelector('#pc-btn-restablecer').addEventListener('click', () => {
-      estado.filtros = { estado_pago: 'PENDIENTE', buscar: '', pagina: 1 };
-      contenedor.querySelector('#pc-estado').value = 'PENDIENTE';
+      estado.filtros = { estado_pago: 'TODAS', buscar: '', pagina: 1 };
       contenedor.querySelector('#pc-buscar').value = '';
+      actualizarTabsEstado();
       cargarLista();
     });
 
+    actualizarTabsEstado();
     estado.renderizadoBase = true;
   }
 
@@ -148,7 +174,7 @@ export function crearModuloPorCobrar({
         <div class="kpi-value" style="color:${Number(r.notas_pendientes) > 0 ? 'var(--warning-text)' : 'var(--text-primary)'};">
           ${r.notas_pendientes}
         </div>
-        <div class="kpi-meta">${r.notas_liquidadas} liquidadas en historial</div>
+        <div class="kpi-meta">Con saldo pendiente activo</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Saldo total pendiente</div>
@@ -156,11 +182,19 @@ export function crearModuloPorCobrar({
         <div class="kpi-meta">Dinero restante por cobrar</div>
       </div>
       <div class="kpi-card">
+        <div class="kpi-label">Notas liquidadas</div>
+        <div class="kpi-value" style="color:${Number(r.notas_liquidadas) > 0 ? 'var(--success-text)' : 'var(--text-primary)'};">
+          ${r.notas_liquidadas}
+        </div>
+        <div class="kpi-meta">Total cobrado: <span class="num">${formatearMoneda(r.monto_total_liquidado || 0)}</span></div>
+      </div>
+      <div class="kpi-card">
         <div class="kpi-label">Abonos cobrados hoy</div>
         <div class="kpi-value num">${formatearMoneda(r.cobrado_hoy_abonos)}</div>
-        <div class="kpi-meta">Anticipos y abonos recibidos en el dia</div>
+        <div class="kpi-meta">Anticipos, abonos y liquidaciones del dia</div>
       </div>
     `;
+    actualizarTabsEstado();
   }
 
   function renderizarTabla() {
@@ -173,18 +207,26 @@ export function crearModuloPorCobrar({
 
     strip.innerHTML = `
       <span>
-        Notas encontradas: <strong>${estado.totalesFiltro.cantidad_notas}</strong>
+        Notas en consulta: <strong>${estado.totalesFiltro.cantidad_notas}</strong>
       </span>
       <span>
-        Saldo pendiente en consulta: <strong class="num">${formatearMoneda(estado.totalesFiltro.saldo_filtro)}</strong>
+        Cobrado: <strong class="num">${formatearMoneda(estado.totalesFiltro.pagado_filtro || 0)}</strong>
+      </span>
+      <span>
+        Saldo pendiente: <strong class="num">${formatearMoneda(estado.totalesFiltro.saldo_filtro || 0)}</strong>
       </span>
     `;
 
     if (estado.notas.length === 0) {
+      const mensajesVacios = {
+        PENDIENTE: 'No hay notas pendientes por cobrar.',
+        PAGADA: 'Aun no hay notas liquidadas registradas.',
+        TODAS: 'No hay notas registradas con los filtros seleccionados.'
+      };
       tbody.innerHTML = `
         <tr>
           <td colspan="8" class="empty-state">
-            No hay notas registradas con los filtros seleccionados.
+            ${mensajesVacios[estado.filtros.estado_pago] || mensajesVacios.TODAS}
           </td>
         </tr>
       `;
@@ -209,6 +251,13 @@ export function crearModuloPorCobrar({
           .filter(Boolean)
           .join(' | ');
 
+        const fechaLiq = n.fecha_liquidacion || n.fecha_ultimo_pago;
+        const detalleEstadoHtml = !pendiente && fechaLiq
+          ? `<div class="text-muted" style="font-size:11px;margin-top:4px;white-space:nowrap;">Liq. ${formatearFechaHora(fechaLiq)}</div>`
+          : pendiente && Number(n.total_abonos || 0) > 0
+            ? `<div class="text-muted" style="font-size:11px;margin-top:4px;">${n.total_abonos} ${Number(n.total_abonos) === 1 ? 'pago' : 'pagos'}</div>`
+            : '';
+
         return `
           <tr>
             <td class="num"><strong>${escaparHtml(n.folio)}</strong></td>
@@ -228,6 +277,7 @@ export function crearModuloPorCobrar({
               <span class="badge ${pendiente ? 'badge-warning' : 'badge-success'}">
                 ${pendiente ? 'PENDIENTE' : 'LIQUIDADA'}
               </span>
+              ${detalleEstadoHtml}
             </td>
             <td class="text-center">
               <div class="row-actions">
@@ -813,7 +863,7 @@ export function crearModuloPorCobrar({
       });
       const resp = await api.get(`/ventas/por-cobrar${query}`);
       estado.notas = resp.notas || [];
-      estado.totalesFiltro = resp.totales_filtro || { cantidad_notas: 0, saldo_filtro: 0 };
+      estado.totalesFiltro = resp.totales_filtro || { cantidad_notas: 0, pagado_filtro: 0, saldo_filtro: 0 };
       estado.paginacion = resp.paginacion || estado.paginacion;
       renderizarTabla();
     } catch (error) {

@@ -740,7 +740,8 @@ async function obtenerResumenPorCobrar() {
     `SELECT
       COALESCE(SUM(CASE WHEN estado = 'COMPLETADA' AND estado_pago = 'PENDIENTE' AND saldo_pendiente > 0 THEN 1 ELSE 0 END), 0) AS notas_pendientes,
       ROUND(COALESCE(SUM(CASE WHEN estado = 'COMPLETADA' AND estado_pago = 'PENDIENTE' AND saldo_pendiente > 0 THEN saldo_pendiente ELSE 0 END), 0), 2) AS saldo_total_pendiente,
-      COALESCE(SUM(CASE WHEN estado = 'COMPLETADA' AND es_pago_parcial = 1 AND estado_pago = 'PAGADA' THEN 1 ELSE 0 END), 0) AS notas_liquidadas
+      COALESCE(SUM(CASE WHEN estado = 'COMPLETADA' AND es_pago_parcial = 1 AND estado_pago = 'PAGADA' THEN 1 ELSE 0 END), 0) AS notas_liquidadas,
+      ROUND(COALESCE(SUM(CASE WHEN estado = 'COMPLETADA' AND es_pago_parcial = 1 AND estado_pago = 'PAGADA' THEN total ELSE 0 END), 0), 2) AS monto_total_liquidado
     FROM ventas`
   );
 
@@ -762,7 +763,7 @@ async function listarCuentasPorCobrar(filtros = {}) {
   const condiciones = ["v.estado = 'COMPLETADA'"];
   const params = [];
 
-  const estadoFiltro = String(filtros.estado_pago || 'PENDIENTE')
+  const estadoFiltro = String(filtros.estado_pago || 'TODAS')
     .trim()
     .toUpperCase();
   if (estadoFiltro === 'PENDIENTE') {
@@ -794,6 +795,7 @@ async function listarCuentasPorCobrar(filtros = {}) {
   const [agregadosRows] = await pool.query(
     `SELECT
       COUNT(*) AS total_registros,
+      ROUND(COALESCE(SUM(v.monto_pagado), 0), 2) AS pagado_filtro,
       ROUND(COALESCE(SUM(v.saldo_pendiente), 0), 2) AS saldo_filtro
     FROM ventas v
     WHERE ${whereSql}`,
@@ -801,6 +803,7 @@ async function listarCuentasPorCobrar(filtros = {}) {
   );
 
   const totalRegistros = agregadosRows[0].total_registros;
+  const pagadoFiltro = agregadosRows[0].pagado_filtro;
   const saldoFiltro = agregadosRows[0].saldo_filtro;
 
   const [notas] = await pool.query(
@@ -827,11 +830,13 @@ async function listarCuentasPorCobrar(filtros = {}) {
       e.id AS entrega_id,
       e.fecha_entrega AS entrega_fecha,
       e.estado AS entrega_estado,
-      (SELECT COUNT(*) FROM pagos_venta p WHERE p.venta_id = v.id) AS total_abonos
+      (SELECT COUNT(*) FROM pagos_venta p WHERE p.venta_id = v.id) AS total_abonos,
+      (SELECT MAX(p.fecha_pago) FROM pagos_venta p WHERE p.venta_id = v.id AND p.tipo = 'LIQUIDACION') AS fecha_liquidacion,
+      (SELECT MAX(p.fecha_pago) FROM pagos_venta p WHERE p.venta_id = v.id) AS fecha_ultimo_pago
     FROM ventas v
     LEFT JOIN entregas_programadas e ON e.venta_id = v.id
     WHERE ${whereSql}
-    ORDER BY (v.estado_pago = 'PENDIENTE') DESC, v.fecha_venta DESC, v.id DESC
+    ORDER BY (v.estado_pago = 'PENDIENTE') DESC, fecha_liquidacion DESC, v.fecha_venta DESC, v.id DESC
     LIMIT ? OFFSET ?`,
     [...params, limite, offset]
   );
@@ -840,6 +845,7 @@ async function listarCuentasPorCobrar(filtros = {}) {
     notas,
     totales_filtro: {
       cantidad_notas: totalRegistros,
+      pagado_filtro: pagadoFiltro,
       saldo_filtro: saldoFiltro
     },
     paginacion: {
