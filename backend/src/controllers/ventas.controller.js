@@ -62,6 +62,16 @@ const registrarAbono = asyncHandler(async (req, res) => {
   });
 });
 
+const agregarItems = asyncHandler(async (req, res) => {
+  const id = parsearEnteroPositivo(req.params.id, 'id');
+  const resultado = await ventasService.agregarItemsAVentaPendiente(id, req.body || {});
+  res.status(201).json({
+    ok: true,
+    mensaje: `Material agregado a la nota ${resultado.venta.folio}. Nuevo saldo: $${Number(resultado.venta.saldo_pendiente).toFixed(2)}.`,
+    ...resultado
+  });
+});
+
 const descargarPdf = asyncHandler(async (req, res) => {
   const id = parsearEnteroPositivo(req.params.id, 'id');
   const resultado = await ventasService.obtenerVentaPorId(id);
@@ -88,6 +98,7 @@ module.exports = {
   listarPorCobrar,
   asignarNombre,
   registrarAbono,
+  agregarItems,
   descargarPdf
 };
 

@@ -10,6 +10,7 @@ router.get('/', ventasController.listar);
 router.get('/:id/pdf', ventasController.descargarPdf);
 router.patch('/:id/nombre', ventasController.asignarNombre);
 router.post('/:id/abonos', ventasController.registrarAbono);
+router.post('/:id/items', ventasController.agregarItems);
 router.get('/:id', ventasController.obtener);
 router.post('/', ventasController.crear);
 

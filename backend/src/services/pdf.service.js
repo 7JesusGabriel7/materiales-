@@ -499,6 +499,13 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
   y = dibujarEncabezadoTabla(doc, y);
   const partidas = Array.isArray(detalle) ? detalle : [];
 
+  const fechasDistintas = new Set(
+    partidas
+      .map((item) => (item.fecha_agregado ? String(item.fecha_agregado).slice(0, 10) : ''))
+      .filter(Boolean)
+  );
+  const mostrarFechaPartida = fechasDistintas.size > 1;
+
   if (partidas.length === 0) {
     doc.rect(MARGEN, y, ANCHO_CONTENIDO, 24)
       .fillAndStroke(COLORES.blanco, COLORES.bordeSuave);
@@ -510,7 +517,11 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
   }
 
   partidas.forEach((item, indice) => {
-    const nombreProd = limpiarTexto(item.producto_nombre) || 'Producto';
+    const fechaTag =
+      mostrarFechaPartida && item.fecha_agregado
+        ? ` [${convertirFechaIsoATexto(item.fecha_agregado).slice(0, 5)}]`
+        : '';
+    const nombreProd = `${limpiarTexto(item.producto_nombre) || 'Producto'}${fechaTag}`;
     const unidad = limpiarTexto(item.unidad_medida) || '-';
     const cantidadTxt = formatearCantidad(item.cantidad);
     const precioTxt = formatearMoneda(item.precio_unitario);

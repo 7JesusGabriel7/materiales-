@@ -133,6 +133,7 @@ CREATE TABLE `detalle_ventas` (
   `cantidad` decimal(12,3) NOT NULL,
   `precio_unitario` decimal(12,2) NOT NULL,
   `importe` decimal(12,2) NOT NULL,
+  `fecha_agregado` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_detalle_venta` (`venta_id`),
   KEY `idx_detalle_producto` (`producto_id`),

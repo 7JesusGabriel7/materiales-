@@ -160,20 +160,32 @@ function construirEncabezadoNegocio(infoNegocio) {
 }
 
 function construirFilasPartidas(detalle) {
-  return (detalle || [])
-    .map(
-      (item) => `
+  const partidas = Array.isArray(detalle) ? detalle : [];
+  const fechasDistintas = new Set(
+    partidas
+      .map((item) => (item.fecha_agregado ? String(item.fecha_agregado).slice(0, 10) : ''))
+      .filter(Boolean)
+  );
+  const mostrarFechaPartida = fechasDistintas.size > 1;
+
+  return partidas
+    .map((item) => {
+      const etiquetaFecha =
+        mostrarFechaPartida && item.fecha_agregado
+          ? ` [${formatearFecha(item.fecha_agregado).slice(0, 5)}]`
+          : '';
+      return `
       <tr>
         <td colspan="2">
-          <div class="ticket-item-name">${escaparHtml(item.producto_nombre)}</div>
+          <div class="ticket-item-name">${escaparHtml(item.producto_nombre)}${escaparHtml(etiquetaFecha)}</div>
           <div class="ticket-item-detail">
             <span>${formatearCantidad(item.cantidad)} ${escaparHtml(item.unidad_medida)} x ${formatearMoneda(item.precio_unitario)}</span>
             <strong>${formatearMoneda(item.importe)}</strong>
           </div>
         </td>
       </tr>
-    `
-    )
+    `;
+    })
     .join('');
 }
 
