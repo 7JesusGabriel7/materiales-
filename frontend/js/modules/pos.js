@@ -72,7 +72,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     presClienteTelefono: '',
     presNotas: '',
     presupuestoOrigen: null,
-    notaPorAmpliar: null,
     procesando: false,
     renderizadoBase: false
   };
@@ -156,9 +155,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     estado.presClienteTelefono = '';
     estado.presNotas = '';
     estado.presupuestoOrigen = null;
-    estado.notaPorAmpliar = null;
     actualizarBannerPresupuesto();
-    actualizarBannerAmpliacion();
   }
 
   function actualizarSelectorVistaCatalogo() {
@@ -185,27 +182,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       banner.classList.remove('hidden');
     } else {
       folioEl.textContent = '';
-      banner.classList.add('hidden');
-    }
-  }
-
-  function actualizarBannerAmpliacion() {
-    const banner = contenedor.querySelector('#pos-append-banner');
-    const folioEl = contenedor.querySelector('#pos-append-banner-folio');
-    const infoEl = contenedor.querySelector('#pos-append-banner-info');
-    if (!banner || !folioEl || !infoEl) {
-      return;
-    }
-
-    if (estado.notaPorAmpliar) {
-      const n = estado.notaPorAmpliar;
-      const nombreTxt = n.nombre_pendiente || n.cliente_nombre || 'Sin nombre';
-      folioEl.textContent = n.folio;
-      infoEl.textContent = `${nombreTxt} | Saldo actual: ${formatearMoneda(n.saldo_pendiente)}`;
-      banner.classList.remove('hidden');
-    } else {
-      folioEl.textContent = '';
-      infoEl.textContent = '';
       banner.classList.add('hidden');
     }
   }
@@ -412,16 +388,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
           </div>
 
           <div class="card-body">
-            <div id="pos-append-banner" class="pos-append-banner hidden" style="margin-bottom:10px;">
-              <div style="min-width:0;">
-                <div>Agregando material a nota <strong class="num" id="pos-append-banner-folio"></strong></div>
-                <div class="text-secondary" id="pos-append-banner-info" style="font-size:11.5px;"></div>
-              </div>
-              <button type="button" class="btn btn-secondary btn-sm" id="pos-cancelar-ampliacion">
-                Cancelar
-              </button>
-            </div>
-
             <div id="pos-budget-banner" class="pos-budget-banner hidden" style="margin-bottom:10px;">
               <span>Cargado desde presupuesto <strong id="pos-budget-banner-folio"></strong></span>
               <button type="button" class="btn btn-secondary btn-sm" id="pos-desvincular-presupuesto">
@@ -444,21 +410,13 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
               <div class="pos-cart-actions">
                 <button
                   type="button"
-                  id="pos-btn-confirmar-ampliacion"
-                  class="btn btn-primary btn-lg btn-block hidden"
-                  disabled
-                >
-                  Sumar a esta nota
-                </button>
-                <button
-                  type="button"
                   id="pos-btn-abrir-cobro"
                   class="btn btn-primary btn-lg btn-block"
                   disabled
                 >
                   Cobrar venta
                 </button>
-                <div class="pos-actions-divider" id="pos-actions-divider">o cotizar sin vender</div>
+                <div class="pos-actions-divider">o cotizar sin vender</div>
                 <button
                   type="button"
                   id="pos-btn-abrir-presupuesto"
@@ -481,8 +439,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     const btnVistaLista = contenedor.querySelector('#pos-vista-btn-lista');
     const btnLimpiarCarrito = contenedor.querySelector('#pos-limpiar-carrito');
     const btnDesvincularPres = contenedor.querySelector('#pos-desvincular-presupuesto');
-    const btnCancelarAmpliacion = contenedor.querySelector('#pos-cancelar-ampliacion');
-    const btnConfirmarAmpliacion = contenedor.querySelector('#pos-btn-confirmar-ampliacion');
     const btnAbrirCobro = contenedor.querySelector('#pos-btn-abrir-cobro');
     const btnAbrirPresupuesto = contenedor.querySelector('#pos-btn-abrir-presupuesto');
 
@@ -542,13 +498,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       actualizarBannerPresupuesto();
     });
 
-    btnCancelarAmpliacion?.addEventListener('click', () => {
-      estado.notaPorAmpliar = null;
-      actualizarBannerAmpliacion();
-      actualizarResumenCarrito();
-    });
-
-    btnConfirmarAmpliacion?.addEventListener('click', abrirModalConfirmarAmpliacion);
     btnAbrirCobro.addEventListener('click', abrirModalCobro);
     btnAbrirPresupuesto.addEventListener('click', abrirModalPresupuesto);
 
@@ -880,8 +829,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     const totalEl = contenedor.querySelector('#pos-total');
     const btnCobrar = contenedor.querySelector('#pos-btn-abrir-cobro');
     const btnPresupuesto = contenedor.querySelector('#pos-btn-abrir-presupuesto');
-    const dividerEl = contenedor.querySelector('#pos-actions-divider');
-    const btnAmpliar = contenedor.querySelector('#pos-btn-confirmar-ampliacion');
 
     if (!subtotalEl || !totalEl) {
       return;
@@ -896,17 +843,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       (item) => !Number.isFinite(item.cantidad) || item.cantidad < 1
     );
     const deshabilitado = !hayItems || cantidadInvalida || estado.procesando;
-    const modoAmpliacion = Boolean(estado.notaPorAmpliar);
-
-    btnCobrar?.classList.toggle('hidden', modoAmpliacion);
-    dividerEl?.classList.toggle('hidden', modoAmpliacion);
-    btnPresupuesto?.classList.toggle('hidden', modoAmpliacion);
-    btnAmpliar?.classList.toggle('hidden', !modoAmpliacion);
-
-    if (btnAmpliar && modoAmpliacion) {
-      btnAmpliar.textContent = `Sumar a nota ${estado.notaPorAmpliar.folio}`;
-      btnAmpliar.disabled = deshabilitado;
-    }
 
     if (btnCobrar) {
       btnCobrar.disabled = deshabilitado;
@@ -2069,206 +2005,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     });
   }
 
-  function abrirModalConfirmarAmpliacion() {
-    if (!estado.notaPorAmpliar || estado.carrito.length === 0) {
-      return;
-    }
-
-    const nota = estado.notaPorAmpliar;
-    const { total: extra } = calcularTotalesCarrito();
-    const saldoAnterior = redondearMoneda(nota.saldo_pendiente);
-    const totalAnterior = redondearMoneda(nota.total);
-    const nuevoTotal = redondearMoneda(totalAnterior + extra);
-    const saldoConMaterial = redondearMoneda(saldoAnterior + extra);
-    const nombreMostrar =
-      nota.nombre_pendiente || nota.cliente_nombre || 'Sin nombre asignado';
-
-    const root = abrirModal({
-      titulo: `Sumar material a nota ${nota.folio}`,
-      contenidoHtml: `
-        <div class="stack-lg">
-          <div class="info-box" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;">
-            <div>
-              <div class="text-muted" style="font-size:12px;">Folio exacto</div>
-              <strong class="num">${escaparHtml(nota.folio)}</strong>
-            </div>
-            <div>
-              <div class="text-muted" style="font-size:12px;">A nombre de</div>
-              <strong>${escaparHtml(nombreMostrar)}</strong>
-            </div>
-            <div>
-              <div class="text-muted" style="font-size:12px;">Total anterior</div>
-              <strong class="num">${formatearMoneda(totalAnterior)}</strong>
-            </div>
-            <div>
-              <div class="text-muted" style="font-size:12px;">Saldo anterior</div>
-              <strong class="num">${formatearMoneda(saldoAnterior)}</strong>
-            </div>
-          </div>
-
-          <div class="info-box" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>Material nuevo por agregar (${estado.carrito.length} ${estado.carrito.length === 1 ? 'producto' : 'productos'})</span>
-            <strong class="num" style="font-size:16px;">+ ${formatearMoneda(extra)}</strong>
-          </div>
-
-          <div class="field">
-            <label for="amp-abono">Abono que paga hoy ($) (opcional; deje vacio si solo se suma a la deuda)</label>
-            <input
-              type="text"
-              id="amp-abono"
-              class="input num"
-              inputmode="decimal"
-              autocomplete="off"
-              placeholder="0.00"
-            >
-          </div>
-
-          <div class="field">
-            <label for="amp-nota">Nota del movimiento (opcional)</label>
-            <input
-              type="text"
-              id="amp-nota"
-              class="input"
-              maxlength="255"
-              placeholder="Ej. Abono al agregar mas cemento"
-            >
-          </div>
-
-          <div id="amp-estado" class="pos-payment-status pos-payment-pending"></div>
-        </div>
-      `,
-      footerHtml: `
-        <button type="button" class="btn btn-secondary" data-modal-close>Volver al carrito</button>
-        <button type="button" class="btn btn-primary" id="amp-confirmar">
-          Confirmar y sumar a nota
-        </button>
-      `
-    });
-
-    if (!root) {
-      return;
-    }
-
-    const inputAbono = root.querySelector('#amp-abono');
-    const inputNota = root.querySelector('#amp-nota');
-    const estadoEl = root.querySelector('#amp-estado');
-    const btnConfirmar = root.querySelector('#amp-confirmar');
-
-    function actualizarResumenAmpliacion() {
-      const txt = inputAbono.value.trim();
-      const abonoNum = txt === '' ? 0 : Number(txt);
-      const abonoValido =
-        txt === '' ||
-        (Number.isFinite(abonoNum) && abonoNum >= 0 && abonoNum <= saldoConMaterial);
-
-      if (!abonoValido) {
-        estadoEl.className = 'pos-payment-status pos-payment-insufficient';
-        estadoEl.innerHTML = `
-          <span>Abono invalido</span>
-          <span class="num">No puede superar ${formatearMoneda(saldoConMaterial)}</span>
-        `;
-        btnConfirmar.disabled = true;
-        return;
-      }
-
-      const abonoFinal = redondearMoneda(abonoNum);
-      const saldoFinal = redondearMoneda(Math.max(0, saldoConMaterial - abonoFinal));
-      const liquidada = saldoFinal <= 0;
-
-      estadoEl.className = liquidada
-        ? 'pos-payment-status pos-payment-ok'
-        : 'pos-payment-status pos-payment-pending';
-      estadoEl.innerHTML = `
-        <div class="pos-payment-pending-row">
-          <span>${liquidada ? 'Nota quedara LIQUIDADA' : 'Nuevo saldo pendiente'}</span>
-          <span class="num">${formatearMoneda(saldoFinal)}</span>
-        </div>
-        <div class="pos-payment-pending-row" style="font-size:12.5px;font-weight:500;">
-          <span>Nuevo total acumulado de la nota</span>
-          <span class="num">${formatearMoneda(nuevoTotal)}</span>
-        </div>
-      `;
-      btnConfirmar.disabled = estado.procesando;
-    }
-
-    inputAbono.addEventListener('keydown', (e) => {
-      bloquearTeclasNoNumericas(e, { permitirDecimal: true });
-    });
-
-    inputAbono.addEventListener('input', (e) => {
-      const limpio = sanitizarEntradaDecimal(e.target.value, 2);
-      if (e.target.value !== limpio) {
-        e.target.value = limpio;
-      }
-      actualizarResumenAmpliacion();
-    });
-
-    btnConfirmar.addEventListener('click', async () => {
-      if (estado.procesando) {
-        return;
-      }
-      estado.procesando = true;
-      btnConfirmar.disabled = true;
-      btnConfirmar.textContent = 'Actualizando nota...';
-
-      const abonoTexto = inputAbono.value.trim();
-      const payload = {
-        items: estado.carrito.map((item) => ({
-          producto_id: item.producto_id,
-          cantidad: item.cantidad
-        })),
-        abono_adicional: abonoTexto === '' ? 0 : redondearMoneda(Number(abonoTexto)),
-        nota: inputNota.value.trim() || null
-      };
-
-      try {
-        const resp = await api.post(`/ventas/${nota.id}/items`, payload);
-        mostrarToast(
-          resp.mensaje || `Material sumado a la nota ${resp.venta.folio}.`,
-          'success'
-        );
-        cerrarModal();
-        limpiarDatosOperacion();
-        await cargarDatos();
-        if (onVentaCompletada) {
-          onVentaCompletada();
-        }
-        mostrarModalTicket({
-          venta: resp.venta,
-          detalle: resp.detalle,
-          entrega: resp.entrega,
-          pagos: resp.pagos || [],
-          negocio: resp.negocio,
-          titulo: `Nota actualizada ${resp.venta.folio}`
-        });
-      } catch (error) {
-        mostrarToast(error.message, 'error');
-        btnConfirmar.disabled = false;
-        btnConfirmar.textContent = 'Confirmar y sumar a nota';
-        await cargarDatos();
-      } finally {
-        estado.procesando = false;
-        actualizarResumenCarrito();
-      }
-    });
-
-    actualizarResumenAmpliacion();
-    inputAbono.focus();
-  }
-
-  async function iniciarAmpliacionNota({ venta }) {
-    limpiarDatosOperacion();
-    estado.notaPorAmpliar = venta;
-    await cargarDatos();
-    actualizarBannerAmpliacion();
-    actualizarResumenCarrito();
-    contenedor.querySelector('#pos-buscar')?.focus();
-    mostrarToast(
-      `Seleccione los materiales para sumar a ${venta.folio}.`,
-      'success'
-    );
-  }
-
   async function cargarDesdePresupuesto({ presupuesto, detalle }) {
     await cargarDatos();
 
@@ -2396,7 +2132,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       renderizarCatalogo();
       renderizarCarrito();
       actualizarBannerPresupuesto();
-      actualizarBannerAmpliacion();
     } catch (error) {
       mostrarToast(`No se pudo cargar el catalogo: ${error.message}`, 'error');
     }
@@ -2404,7 +2139,6 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
   return {
     cargarDatos,
-    cargarDesdePresupuesto,
-    iniciarAmpliacionNota
+    cargarDesdePresupuesto
   };
 }

@@ -190,18 +190,6 @@ async function ejecutarMigraciones() {
     `);
   }
 
-  const columnasDetalle = await obtenerColumnasTabla('detalle_ventas');
-  if (!columnasDetalle.has('fecha_agregado')) {
-    await pool.query(
-      'ALTER TABLE detalle_ventas ADD COLUMN fecha_agregado DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER importe'
-    );
-    await pool.query(
-      `UPDATE detalle_ventas d
-      INNER JOIN ventas v ON v.id = d.venta_id
-      SET d.fecha_agregado = v.fecha_venta`
-    );
-  }
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS entregas_programadas (
       id INT UNSIGNED NOT NULL AUTO_INCREMENT,

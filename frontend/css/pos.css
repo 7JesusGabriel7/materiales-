@@ -763,17 +763,3 @@
   justify-content: space-between;
   gap: 8px;
 }
-
-.pos-append-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 9px 11px;
-  border-radius: var(--radius-md);
-  background-color: var(--accent-primary-soft);
-  border: 1px solid #93c5fd;
-  border-left: 3px solid var(--accent-primary);
-  color: var(--text-primary);
-  font-size: 12.5px;
-}

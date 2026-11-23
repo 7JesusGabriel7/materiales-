@@ -196,10 +196,6 @@ const moduloEntregas = crearModuloEntregas({
 const moduloPorCobrar = crearModuloPorCobrar({
   onCuentasModificadas: () => {
     refrescarIndicadoresGlobales();
-  },
-  onAgregarMaterialANota: async (datosNota) => {
-    await activarVistaSoloUi('pos');
-    await moduloPos.iniciarAmpliacionNota(datosNota);
   }
 });
 

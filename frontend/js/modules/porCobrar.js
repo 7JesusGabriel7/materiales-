@@ -19,10 +19,7 @@ const ETIQUETAS_TIPO_PAGO = {
   LIQUIDACION: { texto: 'Liquidacion', clase: 'badge-success' }
 };
 
-export function crearModuloPorCobrar({
-  onCuentasModificadas,
-  onAgregarMaterialANota
-}) {
+export function crearModuloPorCobrar({ onCuentasModificadas }) {
   const contenedor = document.getElementById('vista-por-cobrar');
 
   const estado = {
@@ -285,8 +282,7 @@ export function crearModuloPorCobrar({
               <div class="row-actions">
                 ${
                   pendiente
-                    ? `<button type="button" class="btn btn-primary btn-sm" data-pc-abonar="${n.id}">Abonar / Liquidar</button>
-                       <button type="button" class="btn btn-secondary btn-sm" data-pc-material="${n.id}">+ Material</button>`
+                    ? `<button type="button" class="btn btn-primary btn-sm" data-pc-abonar="${n.id}">Abonar / Liquidar</button>`
                     : ''
                 }
                 <button type="button" class="btn btn-secondary btn-sm" data-pc-nombre="${n.id}">
@@ -313,12 +309,6 @@ export function crearModuloPorCobrar({
     tbody.querySelectorAll('[data-pc-abonar]').forEach((btn) => {
       btn.addEventListener('click', () => {
         abrirModalAbonar(Number(btn.dataset.pcAbonar));
-      });
-    });
-
-    tbody.querySelectorAll('[data-pc-material]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        solicitarAgregarMaterial(Number(btn.dataset.pcMaterial));
       });
     });
 
@@ -645,27 +635,11 @@ export function crearModuloPorCobrar({
       const nombreMostrar =
         venta.nombre_pendiente || venta.cliente_nombre || 'Sin nombre asignado';
 
-      const fechasDistintas = new Set(
-        (detalle || [])
-          .map((item) =>
-            item.fecha_agregado ? String(item.fecha_agregado).slice(0, 10) : ''
-          )
-          .filter(Boolean)
-      );
-      const mostrarFechaPartida = fechasDistintas.size > 1;
-
       const filasDetalle = (detalle || [])
         .map(
           (item) => `
           <tr>
-            <td>
-              <strong>${escaparHtml(item.producto_nombre)}</strong>
-              ${
-                mostrarFechaPartida && item.fecha_agregado
-                  ? `<div class="text-muted num" style="font-size:11px;">Agregado: ${formatearFechaHora(item.fecha_agregado)}</div>`
-                  : ''
-              }
-            </td>
+            <td><strong>${escaparHtml(item.producto_nombre)}</strong></td>
             <td>${escaparHtml(item.unidad_medida)}</td>
             <td class="text-right num">${formatearCantidad(item.cantidad)}</td>
             <td class="text-right num">${formatearMoneda(item.precio_unitario)}</td>
@@ -795,8 +769,7 @@ export function crearModuloPorCobrar({
           <button type="button" class="btn btn-secondary" id="btn-pcd-ticket">Ticket (58 mm)</button>
           ${
             pendiente
-              ? `<button type="button" class="btn btn-secondary" id="btn-pcd-material">+ Material</button>
-                 <button type="button" class="btn btn-primary" id="btn-pcd-abonar">Abonar / Liquidar</button>`
+              ? '<button type="button" class="btn btn-primary" id="btn-pcd-abonar">Abonar / Liquidar</button>'
               : ''
           }
         `
@@ -808,9 +781,6 @@ export function crearModuloPorCobrar({
 
       root.querySelector('#btn-pcd-nombre')?.addEventListener('click', () => {
         abrirModalAsignarNombre(venta.id);
-      });
-      root.querySelector('#btn-pcd-material')?.addEventListener('click', () => {
-        solicitarAgregarMaterial(venta.id);
       });
       const btnPdf = root.querySelector('#btn-pcd-pdf');
       btnPdf?.addEventListener('click', () => {
@@ -829,27 +799,6 @@ export function crearModuloPorCobrar({
       root.querySelector('#btn-pcd-abonar')?.addEventListener('click', () => {
         abrirModalAbonar(venta.id);
       });
-    } catch (error) {
-      mostrarToast(error.message, 'error');
-    }
-  }
-
-  async function solicitarAgregarMaterial(ventaId) {
-    if (!onAgregarMaterialANota) {
-      return;
-    }
-    try {
-      const datos = await api.get(`/ventas/${ventaId}`);
-      if (
-        datos.venta?.estado_pago !== 'PENDIENTE' ||
-        Number(datos.venta?.saldo_pendiente) <= 0
-      ) {
-        mostrarToast('Solo puede agregarse material a notas pendientes.', 'warning');
-        await cargarDatos();
-        return;
-      }
-      cerrarModal();
-      await onAgregarMaterialANota(datos);
     } catch (error) {
       mostrarToast(error.message, 'error');
     }
