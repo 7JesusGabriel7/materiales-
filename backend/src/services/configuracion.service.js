@@ -35,6 +35,20 @@ function normalizarEscalaLetra(valor) {
   return Math.min(ESCALA_LETRA_MAX, Math.max(ESCALA_LETRA_MIN, Math.round(num)));
 }
 
+function validarEscalaLetraOpcional(valorRaw, fallback = ESCALA_LETRA_DEFAULT) {
+  if (valorRaw === undefined || valorRaw === null || String(valorRaw).trim() === '') {
+    return normalizarEscalaLetra(fallback);
+  }
+  const num = Number(valorRaw);
+  if (!Number.isFinite(num) || num < ESCALA_LETRA_MIN || num > ESCALA_LETRA_MAX) {
+    throw new AppError(
+      `El tamano de letra debe estar entre ${ESCALA_LETRA_MIN}% y ${ESCALA_LETRA_MAX}%.`,
+      400
+    );
+  }
+  return Math.round(num);
+}
+
 function resolverIconoSeguro(iconoRaw, mostrarBandera = true) {
   if (iconoRaw && ICONOS_PERMITIDOS.has(String(iconoRaw).trim())) {
     return String(iconoRaw).trim();
@@ -58,6 +72,7 @@ function mapearConfiguracion(fila) {
     mostrarCamionTicket: iconoTicket !== 'ninguno',
     iconoTicket,
     escalaLetra: normalizarEscalaLetra(fila.escala_letra),
+    escalaLetraPdf: normalizarEscalaLetra(fila.escala_letra_pdf),
     fecha_modificacion: fila.fecha_modificacion
   };
 }
@@ -80,6 +95,7 @@ async function asegurarTablaConfiguracion() {
       mostrar_camion_ticket TINYINT(1) NOT NULL DEFAULT 1,
       icono_ticket VARCHAR(40) NOT NULL DEFAULT 'camion_volteo',
       escala_letra SMALLINT UNSIGNED NOT NULL DEFAULT 100,
+      escala_letra_pdf SMALLINT UNSIGNED NOT NULL DEFAULT 100,
       fecha_modificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -134,6 +150,12 @@ async function asegurarTablaConfiguracion() {
     );
   }
 
+  if (!mapaCols.has('escala_letra_pdf')) {
+    await pool.query(
+      'ALTER TABLE configuracion_negocio ADD COLUMN escala_letra_pdf SMALLINT UNSIGNED NOT NULL DEFAULT 100 AFTER escala_letra'
+    );
+  }
+
   await pool.query(
     `INSERT IGNORE INTO configuracion_negocio (
       id,
@@ -146,8 +168,9 @@ async function asegurarTablaConfiguracion() {
       mensaje_pdf,
       mostrar_camion_ticket,
       icono_ticket,
-      escala_letra
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, 1, 'camion_volteo', 100)`,
+      escala_letra,
+      escala_letra_pdf
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, 1, 'camion_volteo', 100, 100)`,
     [
       env.negocio.nombre,
       env.negocio.direccion,
@@ -172,6 +195,7 @@ async function obtenerConfiguracionNegocio() {
       mostrar_camion_ticket,
       icono_ticket,
       escala_letra,
+      escala_letra_pdf,
       fecha_modificacion
     FROM configuracion_negocio
     WHERE id = 1
@@ -244,20 +268,31 @@ async function actualizarConfiguracionNegocio(datos = {}) {
 
   const escalaRaw =
     datos.escalaLetra !== undefined ? datos.escalaLetra : datos.escala_letra;
-  let escalaLetra;
-  if (escalaRaw !== undefined && escalaRaw !== null && String(escalaRaw).trim() !== '') {
-    const num = Number(escalaRaw);
-    if (!Number.isFinite(num) || num < ESCALA_LETRA_MIN || num > ESCALA_LETRA_MAX) {
-      throw new AppError(
-        `El tamano de letra debe estar entre ${ESCALA_LETRA_MIN}% y ${ESCALA_LETRA_MAX}%.`,
-        400
-      );
-    }
-    escalaLetra = Math.round(num);
-  } else {
-    const actual = await obtenerConfiguracionNegocio();
-    escalaLetra = normalizarEscalaLetra(actual.escalaLetra);
-  }
+  const escalaPdfRaw =
+    datos.escalaLetraPdf !== undefined
+      ? datos.escalaLetraPdf
+      : datos.escala_letra_pdf;
+
+  const faltaEscalaTicket =
+    escalaRaw === undefined || escalaRaw === null || String(escalaRaw).trim() === '';
+  const faltaEscalaPdf =
+    escalaPdfRaw === undefined ||
+    escalaPdfRaw === null ||
+    String(escalaPdfRaw).trim() === '';
+
+  const actual =
+    faltaEscalaTicket || faltaEscalaPdf
+      ? await obtenerConfiguracionNegocio()
+      : null;
+
+  const escalaLetra = validarEscalaLetraOpcional(
+    escalaRaw,
+    actual ? actual.escalaLetra : ESCALA_LETRA_DEFAULT
+  );
+  const escalaLetraPdf = validarEscalaLetraOpcional(
+    escalaPdfRaw,
+    actual ? actual.escalaLetraPdf : ESCALA_LETRA_DEFAULT
+  );
 
   const [resultado] = await pool.query(
     `UPDATE configuracion_negocio
@@ -271,7 +306,8 @@ async function actualizarConfiguracionNegocio(datos = {}) {
       mensaje_pdf = ?,
       mostrar_camion_ticket = ?,
       icono_ticket = ?,
-      escala_letra = ?
+      escala_letra = ?,
+      escala_letra_pdf = ?
     WHERE id = 1`,
     [
       nombre,
@@ -283,7 +319,8 @@ async function actualizarConfiguracionNegocio(datos = {}) {
       mensajePdf,
       mostrarCamionTicket,
       iconoTicket,
-      escalaLetra
+      escalaLetra,
+      escalaLetraPdf
     ]
   );
 
@@ -303,6 +340,7 @@ module.exports = {
   ESCALA_LETRA_MAX,
   ESCALA_LETRA_DEFAULT,
   normalizarEscalaLetra,
+  validarEscalaLetraOpcional,
   asegurarTablaConfiguracion,
   obtenerConfiguracionNegocio,
   actualizarConfiguracionNegocio

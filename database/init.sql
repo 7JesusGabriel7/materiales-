@@ -182,6 +182,7 @@ CREATE TABLE IF NOT EXISTS configuracion_negocio (
   mostrar_camion_ticket TINYINT(1) NOT NULL DEFAULT 1,
   icono_ticket VARCHAR(40) NOT NULL DEFAULT 'camion_volteo',
   escala_letra SMALLINT UNSIGNED NOT NULL DEFAULT 100,
+  escala_letra_pdf SMALLINT UNSIGNED NOT NULL DEFAULT 100,
   fecha_modificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -197,7 +198,8 @@ INSERT IGNORE INTO configuracion_negocio (
   mensaje_pdf,
   mostrar_camion_ticket,
   icono_ticket,
-  escala_letra
+  escala_letra,
+  escala_letra_pdf
 ) VALUES (
   1,
   'Casa de Materiales El Constructor',
@@ -209,6 +211,7 @@ INSERT IGNORE INTO configuracion_negocio (
   'Gracias por su compra. Documento digital emitido por el establecimiento para referencia y control del cliente.',
   1,
   'camion_volteo',
+  100,
   100
 );
 

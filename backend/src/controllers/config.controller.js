@@ -66,23 +66,14 @@ const generarPdfEjemplo = asyncHandler(async (req, res) => {
     iconoTicket = 'ninguno';
   }
 
-  let escalaLetra = configuracionService.normalizarEscalaLetra(guardada.escalaLetra);
-  const escalaRaw =
-    borrador.escalaLetra !== undefined ? borrador.escalaLetra : borrador.escala_letra;
-  if (escalaRaw !== undefined && escalaRaw !== null && String(escalaRaw).trim() !== '') {
-    const num = Number(escalaRaw);
-    if (
-      !Number.isFinite(num) ||
-      num < configuracionService.ESCALA_LETRA_MIN ||
-      num > configuracionService.ESCALA_LETRA_MAX
-    ) {
-      throw new AppError(
-        `El tamano de letra debe estar entre ${configuracionService.ESCALA_LETRA_MIN}% y ${configuracionService.ESCALA_LETRA_MAX}%.`,
-        400
-      );
-    }
-    escalaLetra = Math.round(num);
-  }
+  const escalaPdfRaw =
+    borrador.escalaLetraPdf !== undefined
+      ? borrador.escalaLetraPdf
+      : borrador.escala_letra_pdf;
+  const escalaLetraPdf = configuracionService.validarEscalaLetraOpcional(
+    escalaPdfRaw,
+    guardada.escalaLetraPdf
+  );
 
   const negocioEjemplo = {
     nombre: textoOpcional(borrador.nombre, 150) || guardada.nombre,
@@ -111,7 +102,8 @@ const generarPdfEjemplo = asyncHandler(async (req, res) => {
         ? textoOpcional(borrador.mensajePdf, 500) || ''
         : guardada.mensajePdf,
     iconoTicket,
-    escalaLetra,
+    escalaLetra: guardada.escalaLetra,
+    escalaLetraPdf,
     mostrarCamionTicket: iconoTicket !== 'ninguno'
   };
 

@@ -887,7 +887,8 @@ async function generarPdfNotaVenta({
 }) {
   return construirBufferPdf((doc) => {
     const factor =
-      normalizarEscalaLetra(negocio.escalaLetra ?? negocio.escala_letra) / 100;
+      normalizarEscalaLetra(negocio.escalaLetraPdf ?? negocio.escala_letra_pdf) /
+      100;
     const fechaStr = convertirFechaIsoATexto(venta.fecha_venta);
     const horaStr = extraerHoraTexto(venta.fecha_venta);
     const tipoTexto =
@@ -1030,7 +1031,8 @@ async function generarPdfNotaVenta({
 async function generarPdfPresupuesto({ presupuesto, detalle = [], negocio = {} }) {
   return construirBufferPdf((doc) => {
     const factor =
-      normalizarEscalaLetra(negocio.escalaLetra ?? negocio.escala_letra) / 100;
+      normalizarEscalaLetra(negocio.escalaLetraPdf ?? negocio.escala_letra_pdf) /
+      100;
     const fechaStr = convertirFechaIsoATexto(presupuesto.fecha_presupuesto);
     const horaStr = extraerHoraTexto(presupuesto.fecha_presupuesto);
 

@@ -18,6 +18,49 @@ function obtenerEtiquetaEscala(escala) {
   return 'Extra grande';
 }
 
+function construirBloqueControlEscala({ idPrefijo, dataPreset, titulo }) {
+  return `
+    <div class="cfg-font-scale-box">
+      <div style="font-size:12.5px;font-weight:700;color:var(--text-primary);">${escaparHtml(titulo)}</div>
+      <div class="cfg-font-scale-controls">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          id="${idPrefijo}-menos"
+          aria-label="Hacer letra mas chica"
+        >
+          A-
+        </button>
+        <input
+          type="range"
+          id="${idPrefijo}-letra"
+          class="cfg-font-scale-slider"
+          min="75"
+          max="140"
+          step="5"
+          value="100"
+          aria-label="${escaparHtml(titulo)}"
+        >
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          id="${idPrefijo}-mas"
+          aria-label="Hacer letra mas grande"
+        >
+          A+
+        </button>
+        <span class="badge badge-neutral num" id="${idPrefijo}-valor">100% - Normal</span>
+      </div>
+      <div class="cfg-font-scale-presets">
+        <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn" data-${dataPreset}="85">Chica (85%)</button>
+        <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn active" data-${dataPreset}="100">Normal (100%)</button>
+        <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn" data-${dataPreset}="115">Grande (115%)</button>
+        <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn" data-${dataPreset}="130">Extra grande (130%)</button>
+      </div>
+    </div>
+  `;
+}
+
 export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
   const contenedor = document.getElementById('vista-configuracion');
 
@@ -33,11 +76,13 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
       mostrarCamionTicket: true,
       iconoTicket: 'camion_volteo',
       escalaLetra: 100,
+      escalaLetraPdf: 100,
       fecha_modificacion: null
     },
     iconosDisponibles: CATALOGO_ILUSTRACIONES,
     iconoSeleccionado: 'camion_volteo',
     escalaLetra: 100,
+    escalaLetraPdf: 100,
     pestanaPreview: 'venta',
     guardando: false,
     renderizadoBase: false
@@ -45,7 +90,6 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
 
   function leerFormulario() {
     const iconoTicket = estado.iconoSeleccionado || 'camion_volteo';
-    const escalaLetra = normalizarEscalaLetra(estado.escalaLetra);
     return {
       nombre: contenedor.querySelector('#cfg-nombre')?.value.trim() || '',
       telefono: contenedor.querySelector('#cfg-telefono')?.value.trim() || '',
@@ -56,19 +100,18 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
         contenedor.querySelector('#cfg-mensaje-presupuesto')?.value.trim() || '',
       mensajePdf: contenedor.querySelector('#cfg-mensaje-pdf')?.value.trim() || '',
       iconoTicket,
-      escalaLetra,
+      escalaLetra: normalizarEscalaLetra(estado.escalaLetra),
+      escalaLetraPdf: normalizarEscalaLetra(estado.escalaLetraPdf),
       mostrarCamionTicket: iconoTicket !== 'ninguno'
     };
   }
 
-  function actualizarControlEscala() {
-    const escala = normalizarEscalaLetra(estado.escalaLetra);
-    estado.escalaLetra = escala;
-
-    const slider = contenedor.querySelector('#cfg-escala-letra');
-    const badge = contenedor.querySelector('#cfg-escala-valor');
-    const btnMenos = contenedor.querySelector('#cfg-escala-menos');
-    const btnMas = contenedor.querySelector('#cfg-escala-mas');
+  function sincronizarUnControlEscala({ idPrefijo, dataAttr, valor }) {
+    const escala = normalizarEscalaLetra(valor);
+    const slider = contenedor.querySelector(`#${idPrefijo}-letra`);
+    const badge = contenedor.querySelector(`#${idPrefijo}-valor`);
+    const btnMenos = contenedor.querySelector(`#${idPrefijo}-menos`);
+    const btnMas = contenedor.querySelector(`#${idPrefijo}-mas`);
 
     if (slider) {
       slider.value = String(escala);
@@ -83,9 +126,23 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
       btnMas.disabled = escala >= 140;
     }
 
-    contenedor.querySelectorAll('[data-escala-preset]').forEach((btn) => {
-      const activo = Number(btn.dataset.escalaPreset) === escala;
-      btn.classList.toggle('active', activo);
+    contenedor.querySelectorAll(`[${dataAttr}]`).forEach((btn) => {
+      const valBtn = Number(btn.getAttribute(dataAttr));
+      btn.classList.toggle('active', valBtn === escala);
+    });
+    return escala;
+  }
+
+  function actualizarControlEscala() {
+    estado.escalaLetra = sincronizarUnControlEscala({
+      idPrefijo: 'cfg-escala',
+      dataAttr: 'data-escala-preset',
+      valor: estado.escalaLetra
+    });
+    estado.escalaLetraPdf = sincronizarUnControlEscala({
+      idPrefijo: 'cfg-escala-pdf',
+      dataAttr: 'data-escala-pdf-preset',
+      valor: estado.escalaLetraPdf
     });
   }
 
@@ -133,7 +190,7 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
         : '';
     const textoPiePdf =
       borrador.mensajePdf || borrador.mensajeTicket || 'Gracias por su compra.';
-    const escala = normalizarEscalaLetra(borrador.escalaLetra) / 100;
+    const escala = normalizarEscalaLetra(borrador.escalaLetraPdf) / 100;
 
     return `
       <div class="pdf-preview-sheet" style="--pdf-preview-scale:${escala};">
@@ -257,6 +314,7 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
       estado.negocio.iconoTicket ||
       (estado.negocio.mostrarCamionTicket === false ? 'ninguno' : 'camion_volteo');
     estado.escalaLetra = normalizarEscalaLetra(estado.negocio.escalaLetra);
+    estado.escalaLetraPdf = normalizarEscalaLetra(estado.negocio.escalaLetraPdf);
 
     const setVal = (id, val) => {
       const el = contenedor.querySelector(id);
@@ -384,48 +442,21 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
               </div>
 
               <div class="col-span-2 cfg-section-title">
-                Tamano de letra al imprimir (tickets y PDF)
-                <div class="cfg-section-help">Ajuste que tan grande o chica sale la letra en tickets de 58 mm, presupuestos y notas PDF</div>
+                Tamano de letra al imprimir (independiente)
+                <div class="cfg-section-help">Ajuste por separado el tamano de letra para tickets de 58 mm y para documentos PDF</div>
               </div>
 
-              <div class="col-span-2">
-                <div class="cfg-font-scale-box">
-                  <div class="cfg-font-scale-controls">
-                    <button
-                      type="button"
-                      class="btn btn-secondary btn-sm"
-                      id="cfg-escala-menos"
-                      aria-label="Hacer letra mas chica"
-                    >
-                      A-
-                    </button>
-                    <input
-                      type="range"
-                      id="cfg-escala-letra"
-                      class="cfg-font-scale-slider"
-                      min="75"
-                      max="140"
-                      step="5"
-                      value="100"
-                      aria-label="Porcentaje de tamano de letra"
-                    >
-                    <button
-                      type="button"
-                      class="btn btn-secondary btn-sm"
-                      id="cfg-escala-mas"
-                      aria-label="Hacer letra mas grande"
-                    >
-                      A+
-                    </button>
-                    <span class="badge badge-neutral num" id="cfg-escala-valor">100% - Normal</span>
-                  </div>
-                  <div class="cfg-font-scale-presets">
-                    <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn" data-escala-preset="85">Chica (85%)</button>
-                    <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn active" data-escala-preset="100">Normal (100%)</button>
-                    <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn" data-escala-preset="115">Grande (115%)</button>
-                    <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn" data-escala-preset="130">Extra grande (130%)</button>
-                  </div>
-                </div>
+              <div class="col-span-2" style="display:flex;flex-direction:column;gap:10px;">
+                ${construirBloqueControlEscala({
+                  idPrefijo: 'cfg-escala',
+                  dataPreset: 'escala-preset',
+                  titulo: 'Ticket termico (58 mm) - Ventas y presupuestos'
+                })}
+                ${construirBloqueControlEscala({
+                  idPrefijo: 'cfg-escala-pdf',
+                  dataPreset: 'escala-pdf-preset',
+                  titulo: 'Documentos PDF (hoja carta) - Notas y presupuestos'
+                })}
               </div>
 
               <div class="col-span-2 cfg-section-title">
@@ -493,28 +524,35 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
       el?.addEventListener('change', actualizarVistaPrevia);
     });
 
-    const aplicarEscala = (nuevoValor) => {
-      estado.escalaLetra = normalizarEscalaLetra(nuevoValor);
-      actualizarControlEscala();
-      actualizarVistaPrevia();
-    };
+    const controlesEscala = [
+      { idPrefijo: 'cfg-escala', dataAttr: 'data-escala-preset', campo: 'escalaLetra' },
+      { idPrefijo: 'cfg-escala-pdf', dataAttr: 'data-escala-pdf-preset', campo: 'escalaLetraPdf' }
+    ];
 
-    const sliderEscala = contenedor.querySelector('#cfg-escala-letra');
-    sliderEscala?.addEventListener('input', (e) => {
-      aplicarEscala(e.target.value);
-    });
-    sliderEscala?.addEventListener('change', (e) => {
-      aplicarEscala(e.target.value);
-    });
-    contenedor.querySelector('#cfg-escala-menos')?.addEventListener('click', () => {
-      aplicarEscala(estado.escalaLetra - 5);
-    });
-    contenedor.querySelector('#cfg-escala-mas')?.addEventListener('click', () => {
-      aplicarEscala(estado.escalaLetra + 5);
-    });
-    contenedor.querySelectorAll('[data-escala-preset]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        aplicarEscala(Number(btn.dataset.escalaPreset));
+    controlesEscala.forEach(({ idPrefijo, dataAttr, campo }) => {
+      const aplicar = (nuevoValor) => {
+        estado[campo] = normalizarEscalaLetra(nuevoValor);
+        actualizarControlEscala();
+        actualizarVistaPrevia();
+      };
+
+      const slider = contenedor.querySelector(`#${idPrefijo}-letra`);
+      slider?.addEventListener('input', (e) => {
+        aplicar(e.target.value);
+      });
+      slider?.addEventListener('change', (e) => {
+        aplicar(e.target.value);
+      });
+      contenedor.querySelector(`#${idPrefijo}-menos`)?.addEventListener('click', () => {
+        aplicar(estado[campo] - 5);
+      });
+      contenedor.querySelector(`#${idPrefijo}-mas`)?.addEventListener('click', () => {
+        aplicar(estado[campo] + 5);
+      });
+      contenedor.querySelectorAll(`[${dataAttr}]`).forEach((btn) => {
+        btn.addEventListener('click', () => {
+          aplicar(Number(btn.getAttribute(dataAttr)));
+        });
       });
     });
 
