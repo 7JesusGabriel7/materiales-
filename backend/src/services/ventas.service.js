@@ -196,20 +196,20 @@ async function registrarVenta(datos = {}) {
 
       let montoAnticipo = 0;
       if (tieneMonto) {
-        montoAnticipo = parsearDecimalPositivo(
+        montoAnticipo = parsearDecimalNoNegativo(
           datos.monto_anticipo,
           'monto_anticipo',
           2
         );
       } else if (tienePorcentaje) {
-        const pct = parsearDecimalPositivo(
+        const pct = parsearDecimalNoNegativo(
           datos.porcentaje_anticipo,
           'porcentaje_anticipo',
           2
         );
-        if (pct <= 0 || pct >= 100) {
+        if (pct < 0 || pct >= 100) {
           throw new AppError(
-            'El porcentaje de anticipo debe ser mayor a 0 y menor a 100.',
+            'El porcentaje de anticipo debe estar entre 0 y menor a 100.',
             400
           );
         }
@@ -221,10 +221,6 @@ async function registrarVenta(datos = {}) {
         );
       }
 
-      if (montoAnticipo <= 0) {
-        throw new AppError('El monto de anticipo debe ser mayor a cero.', 400);
-      }
-
       if (montoAnticipo >= total) {
         throw new AppError(
           'El anticipo cubre o supera el total. Para liquidar al 100%, seleccione pago completo.',
@@ -232,10 +228,13 @@ async function registrarVenta(datos = {}) {
         );
       }
 
-      porcentajeAnticipo = Math.min(
-        99.99,
-        Math.max(0.01, redondearMoneda((montoAnticipo / total) * 100))
-      );
+      porcentajeAnticipo =
+        montoAnticipo === 0
+          ? 0
+          : Math.min(
+              99.99,
+              Math.max(0.01, redondearMoneda((montoAnticipo / total) * 100))
+            );
 
       dineroRecibido =
         dineroRecibidoIngresado !== null ? dineroRecibidoIngresado : montoAnticipo;
@@ -434,7 +433,7 @@ async function registrarVenta(datos = {}) {
       ventaId
     ]);
 
-    if (esPagoParcial === 1) {
+    if (esPagoParcial === 1 && montoPagado > 0) {
       await conexion.query(
         `INSERT INTO pagos_venta (
           venta_id,

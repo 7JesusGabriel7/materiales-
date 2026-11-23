@@ -111,7 +111,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
     const excedeTotalParcial = esParcial && recibidoValido && dineroRecibido >= total;
     const anticipoValido =
-      esParcial && recibidoValido && dineroRecibido > 0 && dineroRecibido < total;
+      esParcial && recibidoValido && dineroRecibido >= 0 && dineroRecibido < total;
     const montoAnticipo = anticipoValido ? dineroRecibido : 0;
     const saldoPendiente =
       esParcial && anticipoValido ? redondearMoneda(total - montoAnticipo) : 0;
@@ -1036,6 +1036,9 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
                 <button type="button" id="chk-pago-exacto" class="btn btn-secondary">
                   Exacto
                 </button>
+                <button type="button" id="chk-sin-anticipo" class="btn btn-secondary hidden">
+                  Sin anticipo ($0)
+                </button>
               </div>
             </div>
 
@@ -1070,6 +1073,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
     const labelRecibido = root.querySelector('#chk-label-recibido');
     const inputPago = root.querySelector('#chk-dinero-recibido');
     const btnExacto = root.querySelector('#chk-pago-exacto');
+    const btnSinAnticipo = root.querySelector('#chk-sin-anticipo');
     const estadoPagoEl = root.querySelector('#chk-estado-pago');
     const btnConfirmar = root.querySelector('#chk-confirmar-venta');
 
@@ -1094,10 +1098,10 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
           Boolean(estado.fechaEntrega));
 
       if (esParcial) {
-        if (!recibidoValido || dineroRecibido <= 0) {
+        if (!recibidoValido || dineroRecibido < 0) {
           estadoPagoEl.className = 'pos-payment-status pos-payment-neutral';
           estadoPagoEl.innerHTML = `
-            <span>Escriba cuanto deja hoy de anticipo</span>
+            <span>Escriba cuanto deja hoy (o 0 sin anticipo)</span>
             <span class="num">${formatearMoneda(tot)} pendiente</span>
           `;
           btnConfirmar.disabled = true;
@@ -1121,7 +1125,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
             <span class="num">${formatearMoneda(saldoPendiente)}</span>
           </div>
           <div class="pos-payment-pending-row" style="font-size:12.5px;font-weight:500;">
-            <span>Paga hoy (anticipo)</span>
+            <span>${montoAnticipo === 0 ? 'Paga hoy (sin anticipo)' : 'Paga hoy (anticipo)'}</span>
             <span class="num">${formatearMoneda(montoAnticipo)}</span>
           </div>
         `;
@@ -1171,6 +1175,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
           labelRecibido.textContent = 'Anticipo que paga hoy ($)';
         }
         btnExacto?.classList.add('hidden');
+        btnSinAnticipo?.classList.remove('hidden');
         if (btnConfirmar) {
           btnConfirmar.textContent = 'Guardar nota con saldo pendiente';
         }
@@ -1179,6 +1184,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
           labelRecibido.textContent = 'Efectivo que entrega el cliente ($)';
         }
         btnExacto?.classList.remove('hidden');
+        btnSinAnticipo?.classList.add('hidden');
         if (btnConfirmar) {
           btnConfirmar.textContent = 'Confirmar venta';
         }
@@ -1655,14 +1661,27 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
 
     btnModCompleto?.addEventListener('click', () => {
       estado.modalidadPago = 'COMPLETO';
+      if (estado.dineroRecibidoTexto.trim() === '0') {
+        estado.dineroRecibidoTexto = '';
+        if (inputPago) {
+          inputPago.value = '';
+        }
+      }
       sincronizarModalidadPagoModal();
       inputPago?.focus();
     });
 
     btnModParcial?.addEventListener('click', () => {
       estado.modalidadPago = 'PARCIAL';
+      if (estado.dineroRecibidoTexto.trim() === '') {
+        estado.dineroRecibidoTexto = '0';
+        if (inputPago) {
+          inputPago.value = '0';
+        }
+      }
       sincronizarModalidadPagoModal();
       inputPago?.focus();
+      inputPago?.select();
     });
 
     inputNombrePendiente?.addEventListener('input', (e) => {
@@ -1698,6 +1717,17 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
       estado.dineroRecibidoTexto = tot.toFixed(2);
       inputPago.value = estado.dineroRecibidoTexto;
       actualizarEstadoPagoModal();
+    });
+
+    btnSinAnticipo?.addEventListener('click', () => {
+      if (estado.modalidadPago !== 'PARCIAL') {
+        return;
+      }
+      estado.dineroRecibidoTexto = '0';
+      inputPago.value = '0';
+      actualizarEstadoPagoModal();
+      inputPago.focus();
+      inputPago.select();
     });
 
     btnConfirmar.addEventListener('click', async () => {
@@ -1752,7 +1782,7 @@ export function crearModuloPos({ onVentaCompletada, onPresupuestoGuardado }) {
         mostrarToast(
           excedeTotalParcial
             ? 'El monto cubre el total completo. Seleccione "Pago completo".'
-            : 'Indique cuanto paga hoy de anticipo (mayor a cero y menor al total).',
+            : 'Indique cuanto paga hoy de anticipo (desde $0.00 hasta menor al total).',
           'error'
         );
         return;

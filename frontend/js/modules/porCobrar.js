@@ -254,8 +254,10 @@ export function crearModuloPorCobrar({
         const fechaLiq = n.fecha_liquidacion || n.fecha_ultimo_pago;
         const detalleEstadoHtml = !pendiente && fechaLiq
           ? `<div class="text-muted" style="font-size:11px;margin-top:4px;white-space:nowrap;">Liq. ${formatearFechaHora(fechaLiq)}</div>`
-          : pendiente && Number(n.total_abonos || 0) > 0
-            ? `<div class="text-muted" style="font-size:11px;margin-top:4px;">${n.total_abonos} ${Number(n.total_abonos) === 1 ? 'pago' : 'pagos'}</div>`
+          : pendiente
+            ? Number(n.total_abonos || 0) > 0
+              ? `<div class="text-muted" style="font-size:11px;margin-top:4px;">${n.total_abonos} ${Number(n.total_abonos) === 1 ? 'pago' : 'pagos'}</div>`
+              : '<div class="text-muted" style="font-size:11px;margin-top:4px;">Sin anticipo</div>'
             : '';
 
         return `
