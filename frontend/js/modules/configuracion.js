@@ -6,8 +6,17 @@ import {
   CATALOGO_ILUSTRACIONES,
   generarHtmlTicket58mm,
   generarHtmlTicketPresupuesto58mm,
+  normalizarEscalaLetra,
   obtenerSvgIlustracion
 } from './ticket.js';
+
+function obtenerEtiquetaEscala(escala) {
+  if (escala <= 85) return 'Chica';
+  if (escala < 100) return 'Compacta';
+  if (escala === 100) return 'Normal';
+  if (escala <= 120) return 'Grande';
+  return 'Extra grande';
+}
 
 export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
   const contenedor = document.getElementById('vista-configuracion');
@@ -23,10 +32,12 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
       mensajePdf: '',
       mostrarCamionTicket: true,
       iconoTicket: 'camion_volteo',
+      escalaLetra: 100,
       fecha_modificacion: null
     },
     iconosDisponibles: CATALOGO_ILUSTRACIONES,
     iconoSeleccionado: 'camion_volteo',
+    escalaLetra: 100,
     pestanaPreview: 'venta',
     guardando: false,
     renderizadoBase: false
@@ -34,6 +45,7 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
 
   function leerFormulario() {
     const iconoTicket = estado.iconoSeleccionado || 'camion_volteo';
+    const escalaLetra = normalizarEscalaLetra(estado.escalaLetra);
     return {
       nombre: contenedor.querySelector('#cfg-nombre')?.value.trim() || '',
       telefono: contenedor.querySelector('#cfg-telefono')?.value.trim() || '',
@@ -44,8 +56,37 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
         contenedor.querySelector('#cfg-mensaje-presupuesto')?.value.trim() || '',
       mensajePdf: contenedor.querySelector('#cfg-mensaje-pdf')?.value.trim() || '',
       iconoTicket,
+      escalaLetra,
       mostrarCamionTicket: iconoTicket !== 'ninguno'
     };
+  }
+
+  function actualizarControlEscala() {
+    const escala = normalizarEscalaLetra(estado.escalaLetra);
+    estado.escalaLetra = escala;
+
+    const slider = contenedor.querySelector('#cfg-escala-letra');
+    const badge = contenedor.querySelector('#cfg-escala-valor');
+    const btnMenos = contenedor.querySelector('#cfg-escala-menos');
+    const btnMas = contenedor.querySelector('#cfg-escala-mas');
+
+    if (slider) {
+      slider.value = String(escala);
+    }
+    if (badge) {
+      badge.textContent = `${escala}% - ${obtenerEtiquetaEscala(escala)}`;
+    }
+    if (btnMenos) {
+      btnMenos.disabled = escala <= 75;
+    }
+    if (btnMas) {
+      btnMas.disabled = escala >= 140;
+    }
+
+    contenedor.querySelectorAll('[data-escala-preset]').forEach((btn) => {
+      const activo = Number(btn.dataset.escalaPreset) === escala;
+      btn.classList.toggle('active', activo);
+    });
   }
 
   function renderizarSelectorIconos() {
@@ -92,23 +133,24 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
         : '';
     const textoPiePdf =
       borrador.mensajePdf || borrador.mensajeTicket || 'Gracias por su compra.';
+    const escala = normalizarEscalaLetra(borrador.escalaLetra) / 100;
 
     return `
-      <div class="pdf-preview-sheet">
+      <div class="pdf-preview-sheet" style="--pdf-preview-scale:${escala};">
         <div class="pdf-preview-stripe"></div>
         <div class="pdf-preview-body">
           <div class="pdf-preview-head">
             <div class="pdf-preview-biz">
               ${svgHtml}
               <div style="min-width:0;">
-                <div style="font-weight:700;font-size:12px;line-height:1.25;">${escaparHtml(borrador.nombre || 'Casa de Materiales')}</div>
-                ${borrador.direccion ? `<div class="text-secondary" style="font-size:10px;">${escaparHtml(borrador.direccion)}</div>` : ''}
-                ${borrador.telefono || borrador.rfc ? `<div class="text-muted" style="font-size:9.5px;">${escaparHtml([borrador.telefono, borrador.rfc].filter(Boolean).join(' | '))}</div>` : ''}
+                <div style="font-weight:700;font-size:calc(12px * var(--pdf-preview-scale, 1));line-height:1.25;">${escaparHtml(borrador.nombre || 'Casa de Materiales')}</div>
+                ${borrador.direccion ? `<div class="text-secondary" style="font-size:calc(10px * var(--pdf-preview-scale, 1));">${escaparHtml(borrador.direccion)}</div>` : ''}
+                ${borrador.telefono || borrador.rfc ? `<div class="text-muted" style="font-size:calc(9.5px * var(--pdf-preview-scale, 1));">${escaparHtml([borrador.telefono, borrador.rfc].filter(Boolean).join(' | '))}</div>` : ''}
               </div>
             </div>
             <div class="pdf-preview-folio-box">
-              <div style="font-size:8.5px;color:#93c5fd;font-weight:700;">NOTA DE VENTA</div>
-              <div style="font-weight:700;font-size:10.5px;">VTA-EJEMPLO-01</div>
+              <div style="font-size:calc(8.5px * var(--pdf-preview-scale, 1));color:#93c5fd;font-weight:700;">NOTA DE VENTA</div>
+              <div style="font-weight:700;font-size:calc(10.5px * var(--pdf-preview-scale, 1));">VTA-EJEMPLO-01</div>
             </div>
           </div>
 
@@ -214,6 +256,7 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
     estado.iconoSeleccionado =
       estado.negocio.iconoTicket ||
       (estado.negocio.mostrarCamionTicket === false ? 'ninguno' : 'camion_volteo');
+    estado.escalaLetra = normalizarEscalaLetra(estado.negocio.escalaLetra);
 
     const setVal = (id, val) => {
       const el = contenedor.querySelector(id);
@@ -237,6 +280,7 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
         : 'Cambios reflejados inmediatamente en tickets de 58 mm, presupuestos y notas PDF.';
     }
 
+    actualizarControlEscala();
     renderizarSelectorIconos();
     actualizarVistaPrevia();
   }
@@ -252,7 +296,7 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
           <div class="card-header">
             <div>
               <h2 class="card-title">Datos y personalizacion de documentos</h2>
-              <p class="card-subtitle">Configure datos del negocio, mensajes para ventas, presupuestos y PDF, e ilustracion del encabezado</p>
+              <p class="card-subtitle">Configure datos del negocio, mensajes para ventas, presupuestos y PDF, tamano de letra e ilustracion del encabezado</p>
             </div>
           </div>
 
@@ -340,6 +384,51 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
               </div>
 
               <div class="col-span-2 cfg-section-title">
+                Tamano de letra al imprimir (tickets y PDF)
+                <div class="cfg-section-help">Ajuste que tan grande o chica sale la letra en tickets de 58 mm, presupuestos y notas PDF</div>
+              </div>
+
+              <div class="col-span-2">
+                <div class="cfg-font-scale-box">
+                  <div class="cfg-font-scale-controls">
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      id="cfg-escala-menos"
+                      aria-label="Hacer letra mas chica"
+                    >
+                      A-
+                    </button>
+                    <input
+                      type="range"
+                      id="cfg-escala-letra"
+                      class="cfg-font-scale-slider"
+                      min="75"
+                      max="140"
+                      step="5"
+                      value="100"
+                      aria-label="Porcentaje de tamano de letra"
+                    >
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      id="cfg-escala-mas"
+                      aria-label="Hacer letra mas grande"
+                    >
+                      A+
+                    </button>
+                    <span class="badge badge-neutral num" id="cfg-escala-valor">100% - Normal</span>
+                  </div>
+                  <div class="cfg-font-scale-presets">
+                    <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn" data-escala-preset="85">Chica (85%)</button>
+                    <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn active" data-escala-preset="100">Normal (100%)</button>
+                    <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn" data-escala-preset="115">Grande (115%)</button>
+                    <button type="button" class="btn btn-secondary btn-sm cfg-font-preset-btn" data-escala-preset="130">Extra grande (130%)</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-span-2 cfg-section-title">
                 Ilustracion para tickets y PDFs
                 <div class="cfg-section-help">Elija entre 3 opciones de camiones, 2 maquinas de excavar o solo texto</div>
               </div>
@@ -402,6 +491,31 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
       const el = contenedor.querySelector(selector);
       el?.addEventListener('input', actualizarVistaPrevia);
       el?.addEventListener('change', actualizarVistaPrevia);
+    });
+
+    const aplicarEscala = (nuevoValor) => {
+      estado.escalaLetra = normalizarEscalaLetra(nuevoValor);
+      actualizarControlEscala();
+      actualizarVistaPrevia();
+    };
+
+    const sliderEscala = contenedor.querySelector('#cfg-escala-letra');
+    sliderEscala?.addEventListener('input', (e) => {
+      aplicarEscala(e.target.value);
+    });
+    sliderEscala?.addEventListener('change', (e) => {
+      aplicarEscala(e.target.value);
+    });
+    contenedor.querySelector('#cfg-escala-menos')?.addEventListener('click', () => {
+      aplicarEscala(estado.escalaLetra - 5);
+    });
+    contenedor.querySelector('#cfg-escala-mas')?.addEventListener('click', () => {
+      aplicarEscala(estado.escalaLetra + 5);
+    });
+    contenedor.querySelectorAll('[data-escala-preset]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        aplicarEscala(Number(btn.dataset.escalaPreset));
+      });
     });
 
     contenedor.querySelectorAll('[data-cfg-preview-tab]').forEach((btn) => {
@@ -475,6 +589,7 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
         }
       });
 
+    actualizarControlEscala();
     renderizarSelectorIconos();
     estado.renderizadoBase = true;
   }

@@ -20,6 +20,21 @@ const ICONOS_DOCUMENTO = Object.freeze([
 
 const ICONOS_PERMITIDOS = new Set(ICONOS_DOCUMENTO.map((item) => item.id));
 
+const ESCALA_LETRA_MIN = 75;
+const ESCALA_LETRA_MAX = 140;
+const ESCALA_LETRA_DEFAULT = 100;
+
+function normalizarEscalaLetra(valor) {
+  if (valor === undefined || valor === null || String(valor).trim() === '') {
+    return ESCALA_LETRA_DEFAULT;
+  }
+  const num = Number(valor);
+  if (!Number.isFinite(num)) {
+    return ESCALA_LETRA_DEFAULT;
+  }
+  return Math.min(ESCALA_LETRA_MAX, Math.max(ESCALA_LETRA_MIN, Math.round(num)));
+}
+
 function resolverIconoSeguro(iconoRaw, mostrarBandera = true) {
   if (iconoRaw && ICONOS_PERMITIDOS.has(String(iconoRaw).trim())) {
     return String(iconoRaw).trim();
@@ -42,6 +57,7 @@ function mapearConfiguracion(fila) {
     mensajePdf: fila.mensaje_pdf || '',
     mostrarCamionTicket: iconoTicket !== 'ninguno',
     iconoTicket,
+    escalaLetra: normalizarEscalaLetra(fila.escala_letra),
     fecha_modificacion: fila.fecha_modificacion
   };
 }
@@ -63,6 +79,7 @@ async function asegurarTablaConfiguracion() {
       mensaje_pdf VARCHAR(500) NULL,
       mostrar_camion_ticket TINYINT(1) NOT NULL DEFAULT 1,
       icono_ticket VARCHAR(40) NOT NULL DEFAULT 'camion_volteo',
+      escala_letra SMALLINT UNSIGNED NOT NULL DEFAULT 100,
       fecha_modificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -111,6 +128,12 @@ async function asegurarTablaConfiguracion() {
     );
   }
 
+  if (!mapaCols.has('escala_letra')) {
+    await pool.query(
+      'ALTER TABLE configuracion_negocio ADD COLUMN escala_letra SMALLINT UNSIGNED NOT NULL DEFAULT 100 AFTER icono_ticket'
+    );
+  }
+
   await pool.query(
     `INSERT IGNORE INTO configuracion_negocio (
       id,
@@ -122,8 +145,9 @@ async function asegurarTablaConfiguracion() {
       mensaje_presupuesto,
       mensaje_pdf,
       mostrar_camion_ticket,
-      icono_ticket
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, 1, 'camion_volteo')`,
+      icono_ticket,
+      escala_letra
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, 1, 'camion_volteo', 100)`,
     [
       env.negocio.nombre,
       env.negocio.direccion,
@@ -147,6 +171,7 @@ async function obtenerConfiguracionNegocio() {
       mensaje_pdf,
       mostrar_camion_ticket,
       icono_ticket,
+      escala_letra,
       fecha_modificacion
     FROM configuracion_negocio
     WHERE id = 1
@@ -217,6 +242,23 @@ async function actualizarConfiguracionNegocio(datos = {}) {
 
   await asegurarTablaConfiguracion();
 
+  const escalaRaw =
+    datos.escalaLetra !== undefined ? datos.escalaLetra : datos.escala_letra;
+  let escalaLetra;
+  if (escalaRaw !== undefined && escalaRaw !== null && String(escalaRaw).trim() !== '') {
+    const num = Number(escalaRaw);
+    if (!Number.isFinite(num) || num < ESCALA_LETRA_MIN || num > ESCALA_LETRA_MAX) {
+      throw new AppError(
+        `El tamano de letra debe estar entre ${ESCALA_LETRA_MIN}% y ${ESCALA_LETRA_MAX}%.`,
+        400
+      );
+    }
+    escalaLetra = Math.round(num);
+  } else {
+    const actual = await obtenerConfiguracionNegocio();
+    escalaLetra = normalizarEscalaLetra(actual.escalaLetra);
+  }
+
   const [resultado] = await pool.query(
     `UPDATE configuracion_negocio
     SET
@@ -228,7 +270,8 @@ async function actualizarConfiguracionNegocio(datos = {}) {
       mensaje_presupuesto = ?,
       mensaje_pdf = ?,
       mostrar_camion_ticket = ?,
-      icono_ticket = ?
+      icono_ticket = ?,
+      escala_letra = ?
     WHERE id = 1`,
     [
       nombre,
@@ -239,7 +282,8 @@ async function actualizarConfiguracionNegocio(datos = {}) {
       mensajePresupuesto,
       mensajePdf,
       mostrarCamionTicket,
-      iconoTicket
+      iconoTicket,
+      escalaLetra
     ]
   );
 
@@ -255,6 +299,10 @@ module.exports = {
   ICONOS_PERMITIDOS,
   MENSAJE_PRESUPUESTO_DEFAULT,
   MENSAJE_PDF_DEFAULT,
+  ESCALA_LETRA_MIN,
+  ESCALA_LETRA_MAX,
+  ESCALA_LETRA_DEFAULT,
+  normalizarEscalaLetra,
   asegurarTablaConfiguracion,
   obtenerConfiguracionNegocio,
   actualizarConfiguracionNegocio

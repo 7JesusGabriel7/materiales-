@@ -21,6 +21,21 @@ const ALTO_PAGINA = 792;
 const ANCHO_CONTENIDO = ANCHO_PAGINA - MARGEN * 2;
 const LIMITE_INFERIOR = ALTO_PAGINA - 48;
 
+function normalizarEscalaLetra(valor) {
+  if (valor === undefined || valor === null || String(valor).trim() === '') {
+    return 100;
+  }
+  const num = Number(valor);
+  if (!Number.isFinite(num)) {
+    return 100;
+  }
+  return Math.min(140, Math.max(75, Math.round(num)));
+}
+
+function escalar(base, factor = 1) {
+  return Math.round(base * factor * 10) / 10;
+}
+
 function limpiarTexto(valor) {
   if (valor === undefined || valor === null) {
     return '';
@@ -327,35 +342,39 @@ function dibujarFranjaSuperior(doc) {
   doc.rect(ANCHO_PAGINA * 0.68, 0, ANCHO_PAGINA * 0.32, 6).fillColor(COLORES.azul).fill();
 }
 
-function dibujarEncabezadoDocumento(doc, { negocio, tituloDoc, folio, fechaStr, horaStr, estadoDoc }) {
+function dibujarEncabezadoDocumento(doc, { negocio, tituloDoc, folio, fechaStr, horaStr, estadoDoc, factor = 1 }) {
   dibujarFranjaSuperior(doc);
 
   const yInicio = 24;
   const iconoActivo =
     negocio.iconoTicket ||
     (negocio.mostrarCamionTicket === false ? 'ninguno' : 'camion_volteo');
+
+  const cajaAncho = Math.round(194 + Math.max(0, factor - 1) * 45);
+  const cajaX = MARGEN + ANCHO_CONTENIDO - cajaAncho;
+  const cajaAlto = Math.max(76, Math.round(84 * Math.max(0.92, factor * 0.94)));
+
   let xTextoNegocio = MARGEN;
-  let anchoTextoNegocio = 322;
   let yFinIlustracion = yInicio;
 
   if (iconoActivo !== 'ninguno') {
     dibujarIlustracionDocumento(doc, iconoActivo, MARGEN, yInicio + 2, 0.42);
     xTextoNegocio = MARGEN + 68;
-    anchoTextoNegocio = 254;
     yFinIlustracion = yInicio + 28;
   }
 
+  const anchoTextoNegocio = Math.max(170, cajaX - xTextoNegocio - 12);
   const nombreNegocio = limpiarTexto(negocio.nombre) || 'Casa de Materiales';
   const direccionNegocio = limpiarTexto(negocio.direccion);
   const telefonoNegocio = limpiarTexto(negocio.telefono);
   const rfcNegocio = limpiarTexto(negocio.rfc);
 
   let yNeg = yInicio;
-  doc.font('Helvetica-Bold').fontSize(15.5).fillColor(COLORES.negro);
+  doc.font('Helvetica-Bold').fontSize(escalar(15.5, factor)).fillColor(COLORES.negro);
   doc.text(nombreNegocio, xTextoNegocio, yNeg, { width: anchoTextoNegocio, lineBreak: true });
   yNeg += doc.heightOfString(nombreNegocio, { width: anchoTextoNegocio }) + 4;
 
-  doc.font('Helvetica').fontSize(10).fillColor(COLORES.texto);
+  doc.font('Helvetica').fontSize(escalar(10, factor)).fillColor(COLORES.texto);
   if (direccionNegocio) {
     doc.text(direccionNegocio, xTextoNegocio, yNeg, { width: anchoTextoNegocio, lineBreak: true });
     yNeg += doc.heightOfString(direccionNegocio, { width: anchoTextoNegocio }) + 2;
@@ -366,31 +385,28 @@ function dibujarEncabezadoDocumento(doc, { negocio, tituloDoc, folio, fechaStr, 
     yNeg += doc.heightOfString(contacto, { width: anchoTextoNegocio }) + 2;
   }
 
-  const cajaX = 376;
-  const cajaAncho = 194;
-  const cajaAlto = 84;
-
+  const fBox = Math.min(factor, 1.15);
   doc.roundedRect(cajaX, yInicio, cajaAncho, cajaAlto, 5).fillColor(COLORES.negro).fill();
   doc.rect(cajaX, yInicio, cajaAncho, 4).fillColor(COLORES.azul).fill();
 
-  doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#93c5fd');
+  doc.font('Helvetica-Bold').fontSize(escalar(9.5, fBox)).fillColor('#93c5fd');
   doc.text(tituloDoc, cajaX + 12, yInicio + 10, { width: cajaAncho - 24, align: 'right' });
 
-  doc.font('Helvetica-Bold').fontSize(13).fillColor(COLORES.blanco);
-  doc.text(limpiarTexto(folio) || '-', cajaX + 12, yInicio + 24, {
+  doc.font('Helvetica-Bold').fontSize(escalar(13, fBox)).fillColor(COLORES.blanco);
+  doc.text(limpiarTexto(folio) || '-', cajaX + 12, yInicio + Math.round(10 + 13 * fBox), {
     width: cajaAncho - 24,
     align: 'right'
   });
 
-  doc.font('Helvetica').fontSize(9.5).fillColor('#cbd5e1');
-  doc.text(`Fecha: ${fechaStr}   Hora: ${horaStr}`, cajaX + 12, yInicio + 44, {
+  doc.font('Helvetica').fontSize(escalar(9.5, fBox)).fillColor('#cbd5e1');
+  doc.text(`Fecha: ${fechaStr}   Hora: ${horaStr}`, cajaX + 12, yInicio + Math.round(27 + 16 * fBox), {
     width: cajaAncho - 24,
     align: 'right'
   });
 
   if (estadoDoc) {
-    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#e2e8f0');
-    doc.text(`Estado: ${limpiarTexto(estadoDoc)}`, cajaX + 12, yInicio + 60, {
+    doc.font('Helvetica-Bold').fontSize(escalar(9.5, fBox)).fillColor('#e2e8f0');
+    doc.text(`Estado: ${limpiarTexto(estadoDoc)}`, cajaX + 12, yInicio + Math.round(41 + 18 * fBox), {
       width: cajaAncho - 24,
       align: 'right'
     });
@@ -406,19 +422,25 @@ function dibujarEncabezadoDocumento(doc, { negocio, tituloDoc, folio, fechaStr, 
   return yBase + 12;
 }
 
-function dibujarBloqueDatos(doc, yInicio, filas) {
+function dibujarBloqueDatos(doc, yInicio, filas, factor = 1) {
   const filasValidas = filas.filter((f) => f && f.valor);
   if (filasValidas.length === 0) {
     return yInicio;
   }
 
-  const anchoTexto = ANCHO_CONTENIDO - 148;
-  doc.font('Helvetica').fontSize(10.5);
+  const anchoEtiq = Math.min(160, Math.round(116 * Math.max(1, factor)));
+  const xValor = MARGEN + 14 + anchoEtiq + 6;
+  const anchoTexto = ANCHO_CONTENIDO - (anchoEtiq + 34);
+  const tamValor = escalar(10.5, factor);
+  const tamEtiq = escalar(10, factor);
+  const altoMinFila = Math.max(13, Math.round(16 * factor));
+
+  doc.font('Helvetica').fontSize(tamValor);
 
   const medidas = filasValidas.map((fila) => {
     const etiqueta = `${limpiarTexto(fila.etiqueta)}:`;
     const valor = limpiarTexto(fila.valor);
-    const alto = Math.max(16, doc.heightOfString(valor, { width: anchoTexto }) + 3);
+    const alto = Math.max(altoMinFila, doc.heightOfString(valor, { width: anchoTexto }) + 3);
     return { etiqueta, valor, alto };
   });
 
@@ -430,11 +452,11 @@ function dibujarBloqueDatos(doc, yInicio, filas) {
 
   let cursorY = yInicio + 10;
   medidas.forEach((m) => {
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(COLORES.textoSecundario);
-    doc.text(m.etiqueta, MARGEN + 14, cursorY, { width: 116, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(tamEtiq).fillColor(COLORES.textoSecundario);
+    doc.text(m.etiqueta, MARGEN + 14, cursorY, { width: anchoEtiq, lineBreak: false });
 
-    doc.font('Helvetica').fontSize(10.5).fillColor(COLORES.texto);
-    doc.text(m.valor, MARGEN + 134, cursorY, { width: anchoTexto, lineBreak: true });
+    doc.font('Helvetica').fontSize(tamValor).fillColor(COLORES.texto);
+    doc.text(m.valor, xValor, cursorY, { width: anchoTexto, lineBreak: true });
 
     cursorY += m.alto;
   });
@@ -442,16 +464,19 @@ function dibujarBloqueDatos(doc, yInicio, filas) {
   return yInicio + altoTotal + 10;
 }
 
-function dibujarBloqueNota(doc, yInicio, titulo, textoNota) {
+function dibujarBloqueNota(doc, yInicio, titulo, textoNota, factor = 1) {
   const notaLimpia = limpiarTexto(textoNota);
   if (!notaLimpia) {
     return yInicio;
   }
 
   const anchoTexto = ANCHO_CONTENIDO - 28;
-  doc.font('Helvetica').fontSize(11);
+  const tamTitulo = escalar(9.5, factor);
+  const tamCuerpo = escalar(11, factor);
+  doc.font('Helvetica').fontSize(tamCuerpo);
   const altoNota = doc.heightOfString(notaLimpia, { width: anchoTexto });
-  const altoTotal = altoNota + 34;
+  const offsetCuerpo = Math.round(10 + 11 * factor + 2);
+  const altoTotal = altoNota + Math.round(23 + 11 * factor);
 
   let y = yInicio;
   if (y + altoTotal > LIMITE_INFERIOR - 60) {
@@ -464,31 +489,49 @@ function dibujarBloqueNota(doc, yInicio, titulo, textoNota) {
     .fillAndStroke(COLORES.azulSuave, COLORES.azulBorde);
   doc.rect(MARGEN, y, 4, altoTotal).fillColor(COLORES.azul).fill();
 
-  doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.azul);
+  doc.font('Helvetica-Bold').fontSize(tamTitulo).fillColor(COLORES.azul);
   doc.text(titulo, MARGEN + 14, y + 8, { width: anchoTexto });
 
-  doc.font('Helvetica').fontSize(11).fillColor(COLORES.texto);
-  doc.text(notaLimpia, MARGEN + 14, y + 23, { width: anchoTexto, lineBreak: true });
+  doc.font('Helvetica').fontSize(tamCuerpo).fillColor(COLORES.texto);
+  doc.text(notaLimpia, MARGEN + 14, y + offsetCuerpo, { width: anchoTexto, lineBreak: true });
 
   return y + altoTotal + 12;
 }
 
-function dibujarEncabezadoTabla(doc, y) {
-  const altoHeader = 26;
+function obtenerColumnasPartidas(factor = 1) {
+  const wCant = Math.round(48 * Math.max(1, factor * 0.92));
+  const wUnid = Math.round(68 * Math.max(1, factor * 0.92));
+  const wPrec = Math.round(80 * Math.max(1, factor * 0.95));
+  const wImp = Math.round(82 * Math.max(1, factor * 0.95));
+  const xCant = MARGEN + 6;
+  const xUnid = xCant + wCant + 6;
+  const xDesc = xUnid + wUnid + 6;
+  const wDesc = ANCHO_CONTENIDO - (6 + wCant + 6 + wUnid + 6 + 6 + wPrec + 6 + wImp + 6);
+  const xPrec = xDesc + wDesc + 6;
+  const xImp = xPrec + wPrec + 6;
+  return { xCant, wCant, xUnid, wUnid, xDesc, wDesc, xPrec, wPrec, xImp, wImp };
+}
+
+function dibujarEncabezadoTabla(doc, y, factor = 1) {
+  const altoHeader = Math.max(22, Math.round(26 * factor));
+  const cols = obtenerColumnasPartidas(factor);
+  const tamHeader = Math.min(12, escalar(9.5, factor));
+  const headerY = y + Math.max(6, Math.round((altoHeader - tamHeader) / 2));
+
   doc.rect(MARGEN, y, ANCHO_CONTENIDO, altoHeader).fillColor(COLORES.negro).fill();
   doc.rect(MARGEN, y + altoHeader - 2, ANCHO_CONTENIDO, 2).fillColor(COLORES.azul).fill();
 
-  doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.blanco);
-  doc.text('CANT.', MARGEN + 6, y + 8, { width: 48, align: 'right', lineBreak: false });
-  doc.text('UNIDAD', MARGEN + 60, y + 8, { width: 68, lineBreak: false });
-  doc.text('MATERIAL / DESCRIPCION', MARGEN + 134, y + 8, { width: 214, lineBreak: false });
-  doc.text('P. UNITARIO', MARGEN + 354, y + 8, { width: 80, align: 'right', lineBreak: false });
-  doc.text('IMPORTE', MARGEN + 440, y + 8, { width: 82, align: 'right', lineBreak: false });
+  doc.font('Helvetica-Bold').fontSize(tamHeader).fillColor(COLORES.blanco);
+  doc.text('CANT.', cols.xCant, headerY, { width: cols.wCant, align: 'right', lineBreak: false });
+  doc.text('UNIDAD', cols.xUnid, headerY, { width: cols.wUnid, lineBreak: false });
+  doc.text('MATERIAL / DESCRIPCION', cols.xDesc, headerY, { width: cols.wDesc, lineBreak: false });
+  doc.text('P. UNITARIO', cols.xPrec, headerY, { width: cols.wPrec, align: 'right', lineBreak: false });
+  doc.text('IMPORTE', cols.xImp, headerY, { width: cols.wImp, align: 'right', lineBreak: false });
 
   return y + altoHeader;
 }
 
-function dibujarTablaPartidas(doc, yInicio, detalle) {
+function dibujarTablaPartidas(doc, yInicio, detalle, factor = 1) {
   let y = yInicio;
   if (y + 54 > LIMITE_INFERIOR) {
     doc.addPage();
@@ -496,17 +539,21 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
     y = 30;
   }
 
-  y = dibujarEncabezadoTabla(doc, y);
+  y = dibujarEncabezadoTabla(doc, y, factor);
   const partidas = Array.isArray(detalle) ? detalle : [];
+  const cols = obtenerColumnasPartidas(factor);
+  const tamTexto = escalar(10.5, factor);
+  const tamUnidad = escalar(10, factor);
+  const altoMinFila = Math.max(22, Math.round(26 * factor));
 
   if (partidas.length === 0) {
-    doc.rect(MARGEN, y, ANCHO_CONTENIDO, 26)
+    doc.rect(MARGEN, y, ANCHO_CONTENIDO, altoMinFila)
       .fillAndStroke(COLORES.blanco, COLORES.bordeSuave);
-    doc.font('Helvetica').fontSize(10.5).fillColor(COLORES.textoTenue);
+    doc.font('Helvetica').fontSize(tamTexto).fillColor(COLORES.textoTenue);
     doc.text('Sin productos registrados.', MARGEN + 12, y + 7, {
       width: ANCHO_CONTENIDO - 24
     });
-    return y + 36;
+    return y + altoMinFila + 10;
   }
 
   partidas.forEach((item, indice) => {
@@ -516,15 +563,17 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
     const precioTxt = formatearMoneda(item.precio_unitario);
     const importeTxt = formatearMoneda(item.importe);
 
-    doc.font('Helvetica-Bold').fontSize(10.5);
-    const altoNombre = doc.heightOfString(nombreProd, { width: 214 });
-    const altoFila = Math.max(26, altoNombre + 12);
+    doc.font('Helvetica-Bold').fontSize(tamTexto);
+    const altoNombre = doc.heightOfString(nombreProd, { width: cols.wDesc });
+    doc.font('Helvetica').fontSize(tamUnidad);
+    const altoUnidad = doc.heightOfString(unidad, { width: cols.wUnid });
+    const altoFila = Math.max(altoMinFila, Math.max(altoNombre, altoUnidad) + 12);
 
     if (y + altoFila > LIMITE_INFERIOR - 24) {
       doc.addPage();
       dibujarFranjaSuperior(doc);
       y = 30;
-      y = dibujarEncabezadoTabla(doc, y);
+      y = dibujarEncabezadoTabla(doc, y, factor);
     }
 
     const fondoFila = indice % 2 === 1 ? COLORES.fondoClaro : COLORES.blanco;
@@ -536,16 +585,16 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
       .stroke();
 
     const textoY = y + 7;
-    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(COLORES.texto);
-    doc.text(cantidadTxt, MARGEN + 6, textoY, { width: 48, align: 'right', lineBreak: false });
-    doc.font('Helvetica').fontSize(10).fillColor(COLORES.textoSecundario);
-    doc.text(unidad, MARGEN + 60, textoY, { width: 68, lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(COLORES.texto);
-    doc.text(nombreProd, MARGEN + 134, textoY, { width: 214, lineBreak: true });
-    doc.font('Helvetica').fontSize(10.5).fillColor(COLORES.textoSecundario);
-    doc.text(precioTxt, MARGEN + 354, textoY, { width: 80, align: 'right', lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(COLORES.negro);
-    doc.text(importeTxt, MARGEN + 440, textoY, { width: 82, align: 'right', lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(tamTexto).fillColor(COLORES.texto);
+    doc.text(cantidadTxt, cols.xCant, textoY, { width: cols.wCant, align: 'right', lineBreak: false });
+    doc.font('Helvetica').fontSize(tamUnidad).fillColor(COLORES.textoSecundario);
+    doc.text(unidad, cols.xUnid, textoY, { width: cols.wUnid, lineBreak: true });
+    doc.font('Helvetica-Bold').fontSize(tamTexto).fillColor(COLORES.texto);
+    doc.text(nombreProd, cols.xDesc, textoY, { width: cols.wDesc, lineBreak: true });
+    doc.font('Helvetica').fontSize(tamTexto).fillColor(COLORES.textoSecundario);
+    doc.text(precioTxt, cols.xPrec, textoY, { width: cols.wPrec, align: 'right', lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(tamTexto).fillColor(COLORES.negro);
+    doc.text(importeTxt, cols.xImp, textoY, { width: cols.wImp, align: 'right', lineBreak: false });
 
     y += altoFila;
   });
@@ -559,8 +608,13 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
   return y + 14;
 }
 
-function dibujarBloqueTotales(doc, yInicio, { filasSecundarias = [], etiquetaTotal, valorTotal, anchoCaja = 268 }) {
-  const altoCalculado = 36 + filasSecundarias.length * 22 + 24;
+function dibujarBloqueTotales(doc, yInicio, { filasSecundarias = [], etiquetaTotal, valorTotal, anchoCaja = 268, factor = 1 }) {
+  const anchoFinal = Math.min(ANCHO_CONTENIDO, Math.round(anchoCaja * Math.max(1, factor * 0.95)));
+  const pasoLinea = Math.max(17, Math.round(20 * factor));
+  const altoBarraTotal = Math.max(26, Math.round(30 * factor));
+  const altoBarraDest = Math.max(24, Math.round(28 * factor));
+  const altoCalculado = altoBarraTotal + filasSecundarias.length * (pasoLinea + 6) + 24;
+
   let y = yInicio;
 
   if (y + altoCalculado > LIMITE_INFERIOR - 52) {
@@ -569,55 +623,73 @@ function dibujarBloqueTotales(doc, yInicio, { filasSecundarias = [], etiquetaTot
     y = 30;
   }
 
-  const x = MARGEN + ANCHO_CONTENIDO - anchoCaja;
+  const x = MARGEN + ANCHO_CONTENIDO - anchoFinal;
+  const anchoEtiq = Math.round(anchoFinal * 0.52);
+  const xVal = x + anchoEtiq + 12;
+  const anchoVal = anchoFinal - anchoEtiq - 20;
   const filasPrevias = filasSecundarias.filter((f) => f.antesDeTotal);
   const filasPosteriores = filasSecundarias.filter((f) => !f.antesDeTotal);
+
+  const tamLinea = escalar(11, factor);
+  const tamEtiqTotal = escalar(11.5, factor);
+  const tamValTotal = escalar(13, factor);
+  const tamDest = escalar(12.5, factor);
 
   let cursorY = y;
 
   filasPrevias.forEach((f) => {
-    doc.font('Helvetica').fontSize(11).fillColor(COLORES.textoSecundario);
-    doc.text(f.etiqueta, x + 8, cursorY, { width: 128, lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORES.texto);
-    doc.text(f.valor, x + 136, cursorY, { width: anchoCaja - 144, align: 'right', lineBreak: false });
-    cursorY += 20;
+    doc.font('Helvetica').fontSize(tamLinea).fillColor(COLORES.textoSecundario);
+    doc.text(f.etiqueta, x + 8, cursorY, { width: anchoEtiq, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(tamLinea).fillColor(COLORES.texto);
+    doc.text(f.valor, xVal, cursorY, { width: anchoVal, align: 'right', lineBreak: false });
+    cursorY += pasoLinea;
   });
 
-  doc.roundedRect(x, cursorY, anchoCaja, 30, 4).fillColor(COLORES.azul).fill();
-  doc.font('Helvetica-Bold').fontSize(11.5).fillColor(COLORES.blanco);
-  doc.text(etiquetaTotal, x + 10, cursorY + 9, { width: 128, lineBreak: false });
-  doc.font('Helvetica-Bold').fontSize(13).fillColor(COLORES.blanco);
-  doc.text(valorTotal, x + 136, cursorY + 8, { width: anchoCaja - 144, align: 'right', lineBreak: false });
-  cursorY += 36;
+  doc.roundedRect(x, cursorY, anchoFinal, altoBarraTotal, 4).fillColor(COLORES.azul).fill();
+  doc.font('Helvetica-Bold').fontSize(tamEtiqTotal).fillColor(COLORES.blanco);
+  doc.text(etiquetaTotal, x + 10, cursorY + Math.round((altoBarraTotal - tamEtiqTotal) / 2), {
+    width: anchoEtiq,
+    lineBreak: false
+  });
+  doc.font('Helvetica-Bold').fontSize(tamValTotal).fillColor(COLORES.blanco);
+  doc.text(valorTotal, xVal, cursorY + Math.round((altoBarraTotal - tamValTotal) / 2), {
+    width: anchoVal,
+    align: 'right',
+    lineBreak: false
+  });
+  cursorY += altoBarraTotal + 6;
 
   filasPosteriores.forEach((f) => {
     const etiquetaFinal = f.etiqueta;
     if (f.destacado) {
       cursorY += 2;
-      doc.roundedRect(x, cursorY, anchoCaja, 28, 4).fillColor(f.colorFondo || COLORES.negro).fill();
-      doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORES.blanco);
-      doc.text(etiquetaFinal, x + 10, cursorY + 8, { width: 132, lineBreak: false });
-      doc.font('Helvetica-Bold').fontSize(12.5).fillColor(COLORES.blanco);
-      doc.text(f.valor, x + 140, cursorY + 7, {
-        width: anchoCaja - 148,
+      doc.roundedRect(x, cursorY, anchoFinal, altoBarraDest, 4).fillColor(f.colorFondo || COLORES.negro).fill();
+      doc.font('Helvetica-Bold').fontSize(tamLinea).fillColor(COLORES.blanco);
+      doc.text(etiquetaFinal, x + 10, cursorY + Math.round((altoBarraDest - tamLinea) / 2), {
+        width: anchoEtiq,
+        lineBreak: false
+      });
+      doc.font('Helvetica-Bold').fontSize(tamDest).fillColor(COLORES.blanco);
+      doc.text(f.valor, xVal, cursorY + Math.round((altoBarraDest - tamDest) / 2), {
+        width: anchoVal,
         align: 'right',
         lineBreak: false
       });
-      cursorY += 34;
+      cursorY += altoBarraDest + 6;
       return;
     }
 
     doc.font(f.negrita ? 'Helvetica-Bold' : 'Helvetica')
-      .fontSize(11)
+      .fontSize(tamLinea)
       .fillColor(COLORES.textoSecundario);
-    doc.text(etiquetaFinal, x + 8, cursorY, { width: 132, lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORES.texto);
-    doc.text(f.valor, x + 140, cursorY, {
-      width: anchoCaja - 148,
+    doc.text(etiquetaFinal, x + 8, cursorY, { width: anchoEtiq, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(tamLinea).fillColor(COLORES.texto);
+    doc.text(f.valor, xVal, cursorY, {
+      width: anchoVal,
       align: 'right',
       lineBreak: false
     });
-    cursorY += 20;
+    cursorY += pasoLinea;
   });
 
   return cursorY + 8;
@@ -629,7 +701,7 @@ const ETIQUETAS_TIPO_PAGO_PDF = {
   LIQUIDACION: 'Liquidacion final'
 };
 
-function dibujarTablaPagosPdf(doc, yInicio, pagos) {
+function dibujarTablaPagosPdf(doc, yInicio, pagos, factor = 1) {
   if (!Array.isArray(pagos) || pagos.length === 0) {
     return yInicio;
   }
@@ -641,32 +713,54 @@ function dibujarTablaPagosPdf(doc, yInicio, pagos) {
     y = 30;
   }
 
-  doc.font('Helvetica-Bold').fontSize(10).fillColor(COLORES.azul);
+  const tamSec = escalar(10, factor);
+  const tamHeader = Math.min(11, escalar(9, factor));
+  const tamFila = escalar(9.5, factor);
+  const altoHeader = Math.max(20, Math.round(24 * factor));
+  const altoMinFila = Math.max(19, Math.round(22 * factor));
+
+  const wFecha = Math.round(98 * Math.max(1, factor * 0.92));
+  const wMov = Math.round(98 * Math.max(1, factor * 0.92));
+  const wAbono = Math.round(78 * Math.max(1, factor * 0.95));
+  const wSaldo = Math.round(80 * Math.max(1, factor * 0.95));
+  const xFecha = MARGEN + 6;
+  const xMov = xFecha + wFecha + 4;
+  const xNota = xMov + wMov + 4;
+  const wNota = ANCHO_CONTENIDO - (6 + wFecha + 4 + wMov + 4 + 4 + wAbono + 4 + wSaldo + 6);
+  const xAbono = xNota + wNota + 4;
+  const xSaldo = xAbono + wAbono + 4;
+
+  doc.font('Helvetica-Bold').fontSize(tamSec).fillColor(COLORES.azul);
   doc.text('HISTORIAL DE PAGOS Y ABONOS', MARGEN, y, { width: ANCHO_CONTENIDO });
-  y += 16;
+  y += Math.round(14 + 4 * factor);
 
   const dibujarHeaderPagos = (posY) => {
-    doc.rect(MARGEN, posY, ANCHO_CONTENIDO, 24).fillColor(COLORES.negro).fill();
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORES.blanco);
-    doc.text('FECHA / HORA', MARGEN + 6, posY + 7, { width: 98, lineBreak: false });
-    doc.text('MOVIMIENTO', MARGEN + 108, posY + 7, { width: 98, lineBreak: false });
-    doc.text('NOTA', MARGEN + 210, posY + 7, { width: 146, lineBreak: false });
-    doc.text('ABONO', MARGEN + 360, posY + 7, { width: 78, align: 'right', lineBreak: false });
-    doc.text('SALDO REST.', MARGEN + 442, posY + 7, {
-      width: 80,
+    const hY = posY + Math.max(5, Math.round((altoHeader - tamHeader) / 2));
+    doc.rect(MARGEN, posY, ANCHO_CONTENIDO, altoHeader).fillColor(COLORES.negro).fill();
+    doc.font('Helvetica-Bold').fontSize(tamHeader).fillColor(COLORES.blanco);
+    doc.text('FECHA / HORA', xFecha, hY, { width: wFecha, lineBreak: false });
+    doc.text('MOVIMIENTO', xMov, hY, { width: wMov, lineBreak: false });
+    doc.text('NOTA', xNota, hY, { width: wNota, lineBreak: false });
+    doc.text('ABONO', xAbono, hY, { width: wAbono, align: 'right', lineBreak: false });
+    doc.text('SALDO REST.', xSaldo, hY, {
+      width: wSaldo,
       align: 'right',
       lineBreak: false
     });
-    return posY + 24;
+    return posY + altoHeader;
   };
 
   y = dibujarHeaderPagos(y);
 
   pagos.forEach((p, idx) => {
     const notaPago = limpiarTexto(p.nota) || '-';
-    doc.font('Helvetica').fontSize(9.5);
-    const altoNota = doc.heightOfString(notaPago, { width: 146 });
-    const altoFila = Math.max(22, altoNota + 10);
+    const fechaPagoTxt = `${convertirFechaIsoATexto(p.fecha_pago)} ${extraerHoraTexto(p.fecha_pago)}`.trim();
+    const movTxt = ETIQUETAS_TIPO_PAGO_PDF[p.tipo] || limpiarTexto(p.tipo) || 'Pago';
+
+    doc.font('Helvetica').fontSize(tamFila);
+    const altoNota = doc.heightOfString(notaPago, { width: wNota });
+    const altoFecha = doc.heightOfString(fechaPagoTxt, { width: wFecha });
+    const altoFila = Math.max(altoMinFila, Math.max(altoNota, altoFecha) + 10);
 
     if (y + altoFila > LIMITE_INFERIOR - 24) {
       doc.addPage();
@@ -683,24 +777,21 @@ function dibujarTablaPagosPdf(doc, yInicio, pagos) {
       .strokeColor(COLORES.bordeSuave)
       .stroke();
 
-    const fechaPagoTxt = `${convertirFechaIsoATexto(p.fecha_pago)} ${extraerHoraTexto(p.fecha_pago)}`.trim();
-    const movTxt = ETIQUETAS_TIPO_PAGO_PDF[p.tipo] || limpiarTexto(p.tipo) || 'Pago';
-
-    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.textoSecundario);
-    doc.text(fechaPagoTxt, MARGEN + 6, y + 6, { width: 98, lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.texto);
-    doc.text(movTxt, MARGEN + 108, y + 6, { width: 98, lineBreak: false });
-    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.textoSecundario);
-    doc.text(notaPago, MARGEN + 210, y + 6, { width: 146, lineBreak: true });
-    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.negro);
-    doc.text(formatearMoneda(p.monto), MARGEN + 360, y + 6, {
-      width: 78,
+    doc.font('Helvetica').fontSize(tamFila).fillColor(COLORES.textoSecundario);
+    doc.text(fechaPagoTxt, xFecha, y + 6, { width: wFecha, lineBreak: true });
+    doc.font('Helvetica-Bold').fontSize(tamFila).fillColor(COLORES.texto);
+    doc.text(movTxt, xMov, y + 6, { width: wMov, lineBreak: true });
+    doc.font('Helvetica').fontSize(tamFila).fillColor(COLORES.textoSecundario);
+    doc.text(notaPago, xNota, y + 6, { width: wNota, lineBreak: true });
+    doc.font('Helvetica-Bold').fontSize(tamFila).fillColor(COLORES.negro);
+    doc.text(formatearMoneda(p.monto), xAbono, y + 6, {
+      width: wAbono,
       align: 'right',
       lineBreak: false
     });
-    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.texto);
-    doc.text(formatearMoneda(p.saldo_nuevo), MARGEN + 442, y + 6, {
-      width: 80,
+    doc.font('Helvetica').fontSize(tamFila).fillColor(COLORES.texto);
+    doc.text(formatearMoneda(p.saldo_nuevo), xSaldo, y + 6, {
+      width: wSaldo,
       align: 'right',
       lineBreak: false
     });
@@ -711,12 +802,16 @@ function dibujarTablaPagosPdf(doc, yInicio, pagos) {
   return y + 12;
 }
 
-function dibujarPieDocumento(doc, yInicio, { mensajePrincipal, referenciaFolio, lineaFirma = false }) {
+function dibujarPieDocumento(doc, yInicio, { mensajePrincipal, referenciaFolio, lineaFirma = false, factor = 1 }) {
   const textoMsg = limpiarTexto(mensajePrincipal);
   const anchoMsg = ANCHO_CONTENIDO - 16;
-  doc.font('Helvetica').fontSize(10);
+  const tamMsg = escalar(10, factor);
+  const tamFirma = escalar(9.5, factor);
+  const tamPie = escalar(8.5, factor);
+
+  doc.font('Helvetica').fontSize(tamMsg);
   const altoMsg = textoMsg ? doc.heightOfString(textoMsg, { width: anchoMsg }) : 0;
-  const altoNecesario = (lineaFirma ? 46 : 0) + altoMsg + 36;
+  const altoNecesario = (lineaFirma ? Math.round(46 * factor) : 0) + altoMsg + 36;
 
   let y = yInicio;
   if (y + altoNecesario > LIMITE_INFERIOR) {
@@ -732,12 +827,12 @@ function dibujarPieDocumento(doc, yInicio, { mensajePrincipal, referenciaFolio, 
       .lineWidth(0.8)
       .strokeColor(COLORES.borde)
       .stroke();
-    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.textoTenue);
+    doc.font('Helvetica').fontSize(tamFirma).fillColor(COLORES.textoTenue);
     doc.text('Nombre y firma de recibido conforme', MARGEN, y + 5, {
       width: ANCHO_CONTENIDO,
       align: 'center'
     });
-    y += 24;
+    y += Math.round(16 + tamFirma);
   }
 
   y += 6;
@@ -749,12 +844,12 @@ function dibujarPieDocumento(doc, yInicio, { mensajePrincipal, referenciaFolio, 
   y += 8;
 
   if (textoMsg) {
-    doc.font('Helvetica').fontSize(10).fillColor(COLORES.textoSecundario);
+    doc.font('Helvetica').fontSize(tamMsg).fillColor(COLORES.textoSecundario);
     doc.text(textoMsg, MARGEN + 8, y, { width: anchoMsg, align: 'center', lineBreak: true });
     y += altoMsg + 6;
   }
 
-  doc.font('Helvetica').fontSize(8.5).fillColor(COLORES.textoTenue);
+  doc.font('Helvetica').fontSize(tamPie).fillColor(COLORES.textoTenue);
   doc.text(`Documento digital generado por Sistema POS - ${limpiarTexto(referenciaFolio)}`, MARGEN, y, {
     width: ANCHO_CONTENIDO,
     align: 'center'
@@ -791,6 +886,8 @@ async function generarPdfNotaVenta({
   negocio = {}
 }) {
   return construirBufferPdf((doc) => {
+    const factor =
+      normalizarEscalaLetra(negocio.escalaLetra ?? negocio.escala_letra) / 100;
     const fechaStr = convertirFechaIsoATexto(venta.fecha_venta);
     const horaStr = extraerHoraTexto(venta.fecha_venta);
     const tipoTexto =
@@ -820,7 +917,8 @@ async function generarPdfNotaVenta({
       folio: venta.folio,
       fechaStr,
       horaStr,
-      estadoDoc
+      estadoDoc,
+      factor
     });
 
     const clienteNombre = entrega?.cliente_nombre || venta.cliente_nombre || '';
@@ -859,14 +957,14 @@ async function generarPdfNotaVenta({
         : [])
     ];
 
-    y = dibujarBloqueDatos(doc, y, filasDatos);
+    y = dibujarBloqueDatos(doc, y, filasDatos, factor);
 
     const notaTexto = venta.nota_venta || entrega?.nota_entrega || '';
     if (limpiarTexto(notaTexto)) {
-      y = dibujarBloqueNota(doc, y, 'NOTA DE LA VENTA', notaTexto);
+      y = dibujarBloqueNota(doc, y, 'NOTA DE LA VENTA', notaTexto, factor);
     }
 
-    y = dibujarTablaPartidas(doc, y, detalle);
+    y = dibujarTablaPartidas(doc, y, detalle, factor);
 
     const filasTotalesSecundarias = [
       {
@@ -909,11 +1007,12 @@ async function generarPdfNotaVenta({
       etiquetaTotal: 'TOTAL',
       valorTotal: formatearMoneda(venta.total),
       anchoCaja: 274,
+      factor,
       filasSecundarias: filasTotalesSecundarias
     });
 
     if (esParcial && Array.isArray(pagos) && pagos.length > 0) {
-      y = dibujarTablaPagosPdf(doc, y, pagos);
+      y = dibujarTablaPagosPdf(doc, y, pagos, factor);
     }
 
     dibujarPieDocumento(doc, y, {
@@ -922,13 +1021,16 @@ async function generarPdfNotaVenta({
         negocio.mensajeTicket ||
         'Gracias por su compra.',
       referenciaFolio: `Folio ${venta.folio}`,
-      lineaFirma: Boolean(entrega)
+      lineaFirma: Boolean(entrega),
+      factor
     });
   });
 }
 
 async function generarPdfPresupuesto({ presupuesto, detalle = [], negocio = {} }) {
   return construirBufferPdf((doc) => {
+    const factor =
+      normalizarEscalaLetra(negocio.escalaLetra ?? negocio.escala_letra) / 100;
     const fechaStr = convertirFechaIsoATexto(presupuesto.fecha_presupuesto);
     const horaStr = extraerHoraTexto(presupuesto.fecha_presupuesto);
 
@@ -938,7 +1040,8 @@ async function generarPdfPresupuesto({ presupuesto, detalle = [], negocio = {} }
       folio: presupuesto.folio,
       fechaStr,
       horaStr,
-      estadoDoc: presupuesto.estado
+      estadoDoc: presupuesto.estado,
+      factor
     });
 
     const filasDatos = [
@@ -957,17 +1060,18 @@ async function generarPdfPresupuesto({ presupuesto, detalle = [], negocio = {} }
         : [])
     ];
 
-    y = dibujarBloqueDatos(doc, y, filasDatos);
+    y = dibujarBloqueDatos(doc, y, filasDatos, factor);
 
     if (limpiarTexto(presupuesto.notas)) {
-      y = dibujarBloqueNota(doc, y, 'NOTAS DEL PRESUPUESTO', presupuesto.notas);
+      y = dibujarBloqueNota(doc, y, 'NOTAS DEL PRESUPUESTO', presupuesto.notas, factor);
     }
 
-    y = dibujarTablaPartidas(doc, y, detalle);
+    y = dibujarTablaPartidas(doc, y, detalle, factor);
 
     y = dibujarBloqueTotales(doc, y, {
       etiquetaTotal: 'TOTAL ESTIMADO',
       valorTotal: formatearMoneda(presupuesto.total),
+      factor,
       filasSecundarias: [
         {
           etiqueta: 'Subtotal',
@@ -982,7 +1086,8 @@ async function generarPdfPresupuesto({ presupuesto, detalle = [], negocio = {} }
         negocio.mensajePresupuesto ||
         'Cotizacion informativa. No valido como comprobante de pago ni descuenta inventario. Precios sujetos a cambio sin previo aviso.',
       referenciaFolio: `Presupuesto ${presupuesto.folio}`,
-      lineaFirma: false
+      lineaFirma: false,
+      factor
     });
   });
 }

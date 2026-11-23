@@ -187,6 +187,7 @@ CREATE TABLE IF NOT EXISTS configuracion_negocio (
   mensaje_pdf VARCHAR(500) NULL,
   mostrar_camion_ticket TINYINT(1) NOT NULL DEFAULT 1,
   icono_ticket VARCHAR(40) NOT NULL DEFAULT 'camion_volteo',
+  escala_letra SMALLINT UNSIGNED NOT NULL DEFAULT 100,
   fecha_modificacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

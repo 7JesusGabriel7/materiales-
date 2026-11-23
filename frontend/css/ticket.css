@@ -12,6 +12,7 @@
 }
 
 .ticket-58mm {
+  --ticket-scale: 1;
   width: 58mm;
   max-width: 100%;
   background-color: #ffffff;
@@ -19,7 +20,7 @@
   padding: 4mm 2.5mm;
   font-family: "Arial", "Helvetica Neue", Helvetica, sans-serif;
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: calc(13px * var(--ticket-scale, 1));
   font-weight: 500;
   line-height: 1.35;
   border: 1px solid #d5dbe3;
@@ -44,7 +45,7 @@
 }
 
 .ticket-business-name {
-  font-size: 16px;
+  font-size: calc(16px * var(--ticket-scale, 1));
   font-weight: 800;
   line-height: 1.2;
   text-transform: uppercase;
@@ -52,7 +53,7 @@
 }
 
 .ticket-business-line {
-  font-size: 12px;
+  font-size: calc(12px * var(--ticket-scale, 1));
   font-weight: 600;
   word-break: break-word;
 }
@@ -63,7 +64,7 @@
 }
 
 .ticket-meta {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ticket-scale, 1));
   font-weight: 500;
 }
 
@@ -71,25 +72,27 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 .ticket-meta-row > :last-child {
   flex-shrink: 0;
+  margin-left: auto;
   text-align: right;
 }
 
 .ticket-items {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ticket-scale, 1));
 }
 
 .ticket-items th {
   text-align: left;
   border-bottom: 1.5px solid #000000;
   padding: 3px 0;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--ticket-scale, 1));
   font-weight: 800;
 }
 
@@ -99,7 +102,7 @@
 }
 
 .ticket-item-name {
-  font-size: 13px;
+  font-size: calc(13px * var(--ticket-scale, 1));
   font-weight: 800;
   line-height: 1.25;
   word-break: break-word;
@@ -110,7 +113,7 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 6px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ticket-scale, 1));
   font-weight: 600;
 }
 
@@ -120,7 +123,7 @@
 }
 
 .ticket-totals {
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ticket-scale, 1));
   font-weight: 600;
 }
 
@@ -128,26 +131,32 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 3px;
 }
 
+.ticket-total-row > :last-child {
+  margin-left: auto;
+  text-align: right;
+}
+
 .ticket-grand-total {
-  font-size: 16px;
+  font-size: calc(16px * var(--ticket-scale, 1));
   font-weight: 800;
   margin: 5px 0;
 }
 
 .ticket-footer {
   text-align: center;
-  font-size: 12px;
+  font-size: calc(12px * var(--ticket-scale, 1));
   font-weight: 600;
   margin-top: 7px;
   word-break: break-word;
 }
 
 .ticket-doc-type {
-  font-size: 13.5px;
+  font-size: calc(13.5px * var(--ticket-scale, 1));
   font-weight: 800;
   text-align: center;
   border: 1.5px solid #000000;
@@ -157,14 +166,14 @@
 }
 
 .ticket-section-title {
-  font-size: 12px;
+  font-size: calc(12px * var(--ticket-scale, 1));
   font-weight: 800;
   text-transform: uppercase;
   margin-bottom: 3px;
 }
 
 .ticket-note-box {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ticket-scale, 1));
   font-weight: 600;
   word-break: break-word;
 }

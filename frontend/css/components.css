@@ -713,6 +713,7 @@ input[type="number"] {
 }
 
 .pdf-preview-sheet {
+  --pdf-preview-scale: 1;
   width: 100%;
   max-width: 340px;
   margin: 0 auto;
@@ -721,7 +722,7 @@ input[type="number"] {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   overflow: hidden;
-  font-size: 11px;
+  font-size: calc(11px * var(--pdf-preview-scale, 1));
   color: var(--text-primary);
 }
 
@@ -776,13 +777,13 @@ input[type="number"] {
   border-left: 3px solid var(--accent-primary);
   border-radius: 4px;
   padding: 6px 8px;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--pdf-preview-scale, 1));
 }
 
 .pdf-preview-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--pdf-preview-scale, 1));
 }
 
 .pdf-preview-table th {
@@ -790,7 +791,7 @@ input[type="number"] {
   color: #ffffff;
   padding: 4px 6px;
   text-align: left;
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--pdf-preview-scale, 1));
 }
 
 .pdf-preview-table td {
@@ -804,6 +805,7 @@ input[type="number"] {
   background-color: var(--accent-primary);
   color: #ffffff;
   font-weight: 700;
+  font-size: calc(11.5px * var(--pdf-preview-scale, 1));
   border-radius: 4px;
   padding: 5px 8px;
   display: flex;
@@ -816,8 +818,45 @@ input[type="number"] {
   border-top: 1px solid var(--border-light);
   text-align: center;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: calc(10px * var(--pdf-preview-scale, 1));
   line-height: 1.35;
+}
+
+.cfg-font-scale-box {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-subtle);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cfg-font-scale-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cfg-font-scale-slider {
+  flex: 1;
+  min-width: 150px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.cfg-font-scale-presets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cfg-font-preset-btn.active {
+  background-color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: var(--text-inverse);
 }
 
 .cfg-pdf-actions {

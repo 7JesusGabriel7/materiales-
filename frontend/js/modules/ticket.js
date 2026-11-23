@@ -183,6 +183,17 @@ const ETIQUETAS_TIPO_PAGO_TICKET = {
   LIQUIDACION: 'Liquidacion'
 };
 
+export function normalizarEscalaLetra(valor) {
+  if (valor === undefined || valor === null || String(valor).trim() === '') {
+    return 100;
+  }
+  const num = Number(valor);
+  if (!Number.isFinite(num)) {
+    return 100;
+  }
+  return Math.min(140, Math.max(75, Math.round(num)));
+}
+
 export function generarHtmlTicket58mm({
   venta,
   detalle,
@@ -191,6 +202,7 @@ export function generarHtmlTicket58mm({
   negocio
 }) {
   const infoNegocio = negocio || {};
+  const escalaTicket = normalizarEscalaLetra(infoNegocio.escalaLetra) / 100;
   const clienteNombre = entrega?.cliente_nombre || venta.cliente_nombre || '';
   const nombreAsignado = venta.nombre_pendiente || '';
   const clienteTelefono = entrega?.cliente_telefono || venta.cliente_telefono || '';
@@ -294,7 +306,7 @@ export function generarHtmlTicket58mm({
       `;
 
   return `
-    <div class="ticket-58mm">
+    <div class="ticket-58mm" style="--ticket-scale:${escalaTicket};">
       ${construirEncabezadoNegocio(infoNegocio)}
 
       ${bandaEstadoPago}
@@ -373,6 +385,7 @@ export function generarHtmlTicket58mm({
 
 export function generarHtmlTicketPresupuesto58mm({ presupuesto, detalle, negocio }) {
   const infoNegocio = negocio || {};
+  const escalaTicket = normalizarEscalaLetra(infoNegocio.escalaLetra) / 100;
 
   const bloqueCliente =
     presupuesto.cliente_nombre || presupuesto.cliente_telefono || presupuesto.cliente_direccion
@@ -398,7 +411,7 @@ export function generarHtmlTicketPresupuesto58mm({ presupuesto, detalle, negocio
     : '';
 
   return `
-    <div class="ticket-58mm">
+    <div class="ticket-58mm" style="--ticket-scale:${escalaTicket};">
       ${construirEncabezadoNegocio(infoNegocio)}
 
       <div class="ticket-doc-type">PRESUPUESTO</div>
