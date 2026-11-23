@@ -335,13 +335,13 @@ function dibujarEncabezadoDocumento(doc, { negocio, tituloDoc, folio, fechaStr, 
     negocio.iconoTicket ||
     (negocio.mostrarCamionTicket === false ? 'ninguno' : 'camion_volteo');
   let xTextoNegocio = MARGEN;
-  let anchoTextoNegocio = 334;
+  let anchoTextoNegocio = 322;
   let yFinIlustracion = yInicio;
 
   if (iconoActivo !== 'ninguno') {
     dibujarIlustracionDocumento(doc, iconoActivo, MARGEN, yInicio + 2, 0.42);
     xTextoNegocio = MARGEN + 68;
-    anchoTextoNegocio = 266;
+    anchoTextoNegocio = 254;
     yFinIlustracion = yInicio + 28;
   }
 
@@ -351,11 +351,11 @@ function dibujarEncabezadoDocumento(doc, { negocio, tituloDoc, folio, fechaStr, 
   const rfcNegocio = limpiarTexto(negocio.rfc);
 
   let yNeg = yInicio;
-  doc.font('Helvetica-Bold').fontSize(13.5).fillColor(COLORES.negro);
+  doc.font('Helvetica-Bold').fontSize(15.5).fillColor(COLORES.negro);
   doc.text(nombreNegocio, xTextoNegocio, yNeg, { width: anchoTextoNegocio, lineBreak: true });
-  yNeg += doc.heightOfString(nombreNegocio, { width: anchoTextoNegocio }) + 3;
+  yNeg += doc.heightOfString(nombreNegocio, { width: anchoTextoNegocio }) + 4;
 
-  doc.font('Helvetica').fontSize(8.5).fillColor(COLORES.textoSecundario);
+  doc.font('Helvetica').fontSize(10).fillColor(COLORES.texto);
   if (direccionNegocio) {
     doc.text(direccionNegocio, xTextoNegocio, yNeg, { width: anchoTextoNegocio, lineBreak: true });
     yNeg += doc.heightOfString(direccionNegocio, { width: anchoTextoNegocio }) + 2;
@@ -366,31 +366,31 @@ function dibujarEncabezadoDocumento(doc, { negocio, tituloDoc, folio, fechaStr, 
     yNeg += doc.heightOfString(contacto, { width: anchoTextoNegocio }) + 2;
   }
 
-  const cajaX = 392;
-  const cajaAncho = 178;
-  const cajaAlto = 74;
+  const cajaX = 376;
+  const cajaAncho = 194;
+  const cajaAlto = 84;
 
   doc.roundedRect(cajaX, yInicio, cajaAncho, cajaAlto, 5).fillColor(COLORES.negro).fill();
   doc.rect(cajaX, yInicio, cajaAncho, 4).fillColor(COLORES.azul).fill();
 
-  doc.font('Helvetica-Bold').fontSize(8).fillColor('#93c5fd');
-  doc.text(tituloDoc, cajaX + 12, yInicio + 11, { width: cajaAncho - 24, align: 'right' });
+  doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#93c5fd');
+  doc.text(tituloDoc, cajaX + 12, yInicio + 10, { width: cajaAncho - 24, align: 'right' });
 
-  doc.font('Helvetica-Bold').fontSize(11.5).fillColor(COLORES.blanco);
+  doc.font('Helvetica-Bold').fontSize(13).fillColor(COLORES.blanco);
   doc.text(limpiarTexto(folio) || '-', cajaX + 12, yInicio + 24, {
     width: cajaAncho - 24,
     align: 'right'
   });
 
-  doc.font('Helvetica').fontSize(8.5).fillColor('#cbd5e1');
-  doc.text(`Fecha: ${fechaStr}   Hora: ${horaStr}`, cajaX + 12, yInicio + 43, {
+  doc.font('Helvetica').fontSize(9.5).fillColor('#cbd5e1');
+  doc.text(`Fecha: ${fechaStr}   Hora: ${horaStr}`, cajaX + 12, yInicio + 44, {
     width: cajaAncho - 24,
     align: 'right'
   });
 
   if (estadoDoc) {
-    doc.font('Helvetica-Bold').fontSize(8).fillColor('#e2e8f0');
-    doc.text(`Estado: ${limpiarTexto(estadoDoc)}`, cajaX + 12, yInicio + 57, {
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#e2e8f0');
+    doc.text(`Estado: ${limpiarTexto(estadoDoc)}`, cajaX + 12, yInicio + 60, {
       width: cajaAncho - 24,
       align: 'right'
     });
@@ -412,13 +412,13 @@ function dibujarBloqueDatos(doc, yInicio, filas) {
     return yInicio;
   }
 
-  const anchoTexto = ANCHO_CONTENIDO - 118;
-  doc.font('Helvetica').fontSize(9);
+  const anchoTexto = ANCHO_CONTENIDO - 148;
+  doc.font('Helvetica').fontSize(10.5);
 
   const medidas = filasValidas.map((fila) => {
     const etiqueta = `${limpiarTexto(fila.etiqueta)}:`;
     const valor = limpiarTexto(fila.valor);
-    const alto = Math.max(13, doc.heightOfString(valor, { width: anchoTexto }) + 2);
+    const alto = Math.max(16, doc.heightOfString(valor, { width: anchoTexto }) + 3);
     return { etiqueta, valor, alto };
   });
 
@@ -430,11 +430,11 @@ function dibujarBloqueDatos(doc, yInicio, filas) {
 
   let cursorY = yInicio + 10;
   medidas.forEach((m) => {
-    doc.font('Helvetica-Bold').fontSize(8.5).fillColor(COLORES.textoSecundario);
-    doc.text(m.etiqueta, MARGEN + 14, cursorY, { width: 88, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor(COLORES.textoSecundario);
+    doc.text(m.etiqueta, MARGEN + 14, cursorY, { width: 116, lineBreak: false });
 
-    doc.font('Helvetica').fontSize(9).fillColor(COLORES.texto);
-    doc.text(m.valor, MARGEN + 104, cursorY, { width: anchoTexto, lineBreak: true });
+    doc.font('Helvetica').fontSize(10.5).fillColor(COLORES.texto);
+    doc.text(m.valor, MARGEN + 134, cursorY, { width: anchoTexto, lineBreak: true });
 
     cursorY += m.alto;
   });
@@ -449,9 +449,9 @@ function dibujarBloqueNota(doc, yInicio, titulo, textoNota) {
   }
 
   const anchoTexto = ANCHO_CONTENIDO - 28;
-  doc.font('Helvetica').fontSize(9.5);
+  doc.font('Helvetica').fontSize(11);
   const altoNota = doc.heightOfString(notaLimpia, { width: anchoTexto });
-  const altoTotal = altoNota + 30;
+  const altoTotal = altoNota + 34;
 
   let y = yInicio;
   if (y + altoTotal > LIMITE_INFERIOR - 60) {
@@ -464,26 +464,26 @@ function dibujarBloqueNota(doc, yInicio, titulo, textoNota) {
     .fillAndStroke(COLORES.azulSuave, COLORES.azulBorde);
   doc.rect(MARGEN, y, 4, altoTotal).fillColor(COLORES.azul).fill();
 
-  doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORES.azul);
+  doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.azul);
   doc.text(titulo, MARGEN + 14, y + 8, { width: anchoTexto });
 
-  doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.texto);
-  doc.text(notaLimpia, MARGEN + 14, y + 21, { width: anchoTexto, lineBreak: true });
+  doc.font('Helvetica').fontSize(11).fillColor(COLORES.texto);
+  doc.text(notaLimpia, MARGEN + 14, y + 23, { width: anchoTexto, lineBreak: true });
 
   return y + altoTotal + 12;
 }
 
 function dibujarEncabezadoTabla(doc, y) {
-  const altoHeader = 22;
+  const altoHeader = 26;
   doc.rect(MARGEN, y, ANCHO_CONTENIDO, altoHeader).fillColor(COLORES.negro).fill();
   doc.rect(MARGEN, y + altoHeader - 2, ANCHO_CONTENIDO, 2).fillColor(COLORES.azul).fill();
 
-  doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORES.blanco);
-  doc.text('CANT.', MARGEN + 8, y + 7, { width: 46, align: 'right', lineBreak: false });
-  doc.text('UNIDAD', MARGEN + 62, y + 7, { width: 64, lineBreak: false });
-  doc.text('MATERIAL / DESCRIPCION', MARGEN + 132, y + 7, { width: 226, lineBreak: false });
-  doc.text('P. UNITARIO', MARGEN + 364, y + 7, { width: 74, align: 'right', lineBreak: false });
-  doc.text('IMPORTE', MARGEN + 444, y + 7, { width: 76, align: 'right', lineBreak: false });
+  doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.blanco);
+  doc.text('CANT.', MARGEN + 6, y + 8, { width: 48, align: 'right', lineBreak: false });
+  doc.text('UNIDAD', MARGEN + 60, y + 8, { width: 68, lineBreak: false });
+  doc.text('MATERIAL / DESCRIPCION', MARGEN + 134, y + 8, { width: 214, lineBreak: false });
+  doc.text('P. UNITARIO', MARGEN + 354, y + 8, { width: 80, align: 'right', lineBreak: false });
+  doc.text('IMPORTE', MARGEN + 440, y + 8, { width: 82, align: 'right', lineBreak: false });
 
   return y + altoHeader;
 }
@@ -500,13 +500,13 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
   const partidas = Array.isArray(detalle) ? detalle : [];
 
   if (partidas.length === 0) {
-    doc.rect(MARGEN, y, ANCHO_CONTENIDO, 24)
+    doc.rect(MARGEN, y, ANCHO_CONTENIDO, 26)
       .fillAndStroke(COLORES.blanco, COLORES.bordeSuave);
-    doc.font('Helvetica').fontSize(9).fillColor(COLORES.textoTenue);
+    doc.font('Helvetica').fontSize(10.5).fillColor(COLORES.textoTenue);
     doc.text('Sin productos registrados.', MARGEN + 12, y + 7, {
       width: ANCHO_CONTENIDO - 24
     });
-    return y + 34;
+    return y + 36;
   }
 
   partidas.forEach((item, indice) => {
@@ -516,9 +516,9 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
     const precioTxt = formatearMoneda(item.precio_unitario);
     const importeTxt = formatearMoneda(item.importe);
 
-    doc.font('Helvetica-Bold').fontSize(9);
-    const altoNombre = doc.heightOfString(nombreProd, { width: 226 });
-    const altoFila = Math.max(22, altoNombre + 11);
+    doc.font('Helvetica-Bold').fontSize(10.5);
+    const altoNombre = doc.heightOfString(nombreProd, { width: 214 });
+    const altoFila = Math.max(26, altoNombre + 12);
 
     if (y + altoFila > LIMITE_INFERIOR - 24) {
       doc.addPage();
@@ -535,17 +535,17 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
       .strokeColor(COLORES.bordeSuave)
       .stroke();
 
-    const textoY = y + 6;
-    doc.font('Helvetica').fontSize(9).fillColor(COLORES.texto);
-    doc.text(cantidadTxt, MARGEN + 8, textoY, { width: 46, align: 'right', lineBreak: false });
-    doc.font('Helvetica').fontSize(8.5).fillColor(COLORES.textoSecundario);
-    doc.text(unidad, MARGEN + 62, textoY, { width: 64, lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORES.texto);
-    doc.text(nombreProd, MARGEN + 132, textoY, { width: 226, lineBreak: true });
-    doc.font('Helvetica').fontSize(9).fillColor(COLORES.textoSecundario);
-    doc.text(precioTxt, MARGEN + 364, textoY, { width: 74, align: 'right', lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORES.negro);
-    doc.text(importeTxt, MARGEN + 444, textoY, { width: 76, align: 'right', lineBreak: false });
+    const textoY = y + 7;
+    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(COLORES.texto);
+    doc.text(cantidadTxt, MARGEN + 6, textoY, { width: 48, align: 'right', lineBreak: false });
+    doc.font('Helvetica').fontSize(10).fillColor(COLORES.textoSecundario);
+    doc.text(unidad, MARGEN + 60, textoY, { width: 68, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(COLORES.texto);
+    doc.text(nombreProd, MARGEN + 134, textoY, { width: 214, lineBreak: true });
+    doc.font('Helvetica').fontSize(10.5).fillColor(COLORES.textoSecundario);
+    doc.text(precioTxt, MARGEN + 354, textoY, { width: 80, align: 'right', lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(10.5).fillColor(COLORES.negro);
+    doc.text(importeTxt, MARGEN + 440, textoY, { width: 82, align: 'right', lineBreak: false });
 
     y += altoFila;
   });
@@ -559,8 +559,8 @@ function dibujarTablaPartidas(doc, yInicio, detalle) {
   return y + 14;
 }
 
-function dibujarBloqueTotales(doc, yInicio, { filasSecundarias = [], etiquetaTotal, valorTotal, anchoCaja = 228 }) {
-  const altoCalculado = 30 + filasSecundarias.length * 18 + 20;
+function dibujarBloqueTotales(doc, yInicio, { filasSecundarias = [], etiquetaTotal, valorTotal, anchoCaja = 268 }) {
+  const altoCalculado = 36 + filasSecundarias.length * 22 + 24;
   let y = yInicio;
 
   if (y + altoCalculado > LIMITE_INFERIOR - 52) {
@@ -576,48 +576,48 @@ function dibujarBloqueTotales(doc, yInicio, { filasSecundarias = [], etiquetaTot
   let cursorY = y;
 
   filasPrevias.forEach((f) => {
-    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.textoSecundario);
-    doc.text(f.etiqueta, x + 8, cursorY, { width: 112, lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.texto);
-    doc.text(f.valor, x + 120, cursorY, { width: anchoCaja - 128, align: 'right', lineBreak: false });
-    cursorY += 17;
+    doc.font('Helvetica').fontSize(11).fillColor(COLORES.textoSecundario);
+    doc.text(f.etiqueta, x + 8, cursorY, { width: 128, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORES.texto);
+    doc.text(f.valor, x + 136, cursorY, { width: anchoCaja - 144, align: 'right', lineBreak: false });
+    cursorY += 20;
   });
 
-  doc.roundedRect(x, cursorY, anchoCaja, 26, 4).fillColor(COLORES.azul).fill();
-  doc.font('Helvetica-Bold').fontSize(10).fillColor(COLORES.blanco);
-  doc.text(etiquetaTotal, x + 10, cursorY + 8, { width: 112, lineBreak: false });
-  doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORES.blanco);
-  doc.text(valorTotal, x + 120, cursorY + 7, { width: anchoCaja - 128, align: 'right', lineBreak: false });
-  cursorY += 32;
+  doc.roundedRect(x, cursorY, anchoCaja, 30, 4).fillColor(COLORES.azul).fill();
+  doc.font('Helvetica-Bold').fontSize(11.5).fillColor(COLORES.blanco);
+  doc.text(etiquetaTotal, x + 10, cursorY + 9, { width: 128, lineBreak: false });
+  doc.font('Helvetica-Bold').fontSize(13).fillColor(COLORES.blanco);
+  doc.text(valorTotal, x + 136, cursorY + 8, { width: anchoCaja - 144, align: 'right', lineBreak: false });
+  cursorY += 36;
 
   filasPosteriores.forEach((f) => {
-    const etiquetaFinal = f.negrita ? f.etiqueta : f.etiqueta;
+    const etiquetaFinal = f.etiqueta;
     if (f.destacado) {
       cursorY += 2;
-      doc.roundedRect(x, cursorY, anchoCaja, 24, 4).fillColor(f.colorFondo || COLORES.negro).fill();
-      doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.blanco);
-      doc.text(etiquetaFinal, x + 10, cursorY + 7, { width: 118, lineBreak: false });
-      doc.font('Helvetica-Bold').fontSize(10.5).fillColor(COLORES.blanco);
-      doc.text(f.valor, x + 128, cursorY + 6, {
-        width: anchoCaja - 136,
+      doc.roundedRect(x, cursorY, anchoCaja, 28, 4).fillColor(f.colorFondo || COLORES.negro).fill();
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORES.blanco);
+      doc.text(etiquetaFinal, x + 10, cursorY + 8, { width: 132, lineBreak: false });
+      doc.font('Helvetica-Bold').fontSize(12.5).fillColor(COLORES.blanco);
+      doc.text(f.valor, x + 140, cursorY + 7, {
+        width: anchoCaja - 148,
         align: 'right',
         lineBreak: false
       });
-      cursorY += 30;
+      cursorY += 34;
       return;
     }
 
     doc.font(f.negrita ? 'Helvetica-Bold' : 'Helvetica')
-      .fontSize(9.5)
+      .fontSize(11)
       .fillColor(COLORES.textoSecundario);
-    doc.text(etiquetaFinal, x + 8, cursorY, { width: 118, lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.texto);
-    doc.text(f.valor, x + 126, cursorY, {
-      width: anchoCaja - 134,
+    doc.text(etiquetaFinal, x + 8, cursorY, { width: 132, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORES.texto);
+    doc.text(f.valor, x + 140, cursorY, {
+      width: anchoCaja - 148,
       align: 'right',
       lineBreak: false
     });
-    cursorY += 17;
+    cursorY += 20;
   });
 
   return cursorY + 8;
@@ -635,38 +635,38 @@ function dibujarTablaPagosPdf(doc, yInicio, pagos) {
   }
 
   let y = yInicio;
-  if (y + 62 > LIMITE_INFERIOR - 30) {
+  if (y + 68 > LIMITE_INFERIOR - 30) {
     doc.addPage();
     dibujarFranjaSuperior(doc);
     y = 30;
   }
 
-  doc.font('Helvetica-Bold').fontSize(8.5).fillColor(COLORES.azul);
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(COLORES.azul);
   doc.text('HISTORIAL DE PAGOS Y ABONOS', MARGEN, y, { width: ANCHO_CONTENIDO });
-  y += 14;
+  y += 16;
 
   const dibujarHeaderPagos = (posY) => {
-    doc.rect(MARGEN, posY, ANCHO_CONTENIDO, 20).fillColor(COLORES.negro).fill();
-    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(COLORES.blanco);
-    doc.text('FECHA / HORA', MARGEN + 8, posY + 6, { width: 92, lineBreak: false });
-    doc.text('MOVIMIENTO', MARGEN + 104, posY + 6, { width: 98, lineBreak: false });
-    doc.text('NOTA', MARGEN + 206, posY + 6, { width: 158, lineBreak: false });
-    doc.text('ABONO', MARGEN + 368, posY + 6, { width: 74, align: 'right', lineBreak: false });
-    doc.text('SALDO REST.', MARGEN + 446, posY + 6, {
-      width: 74,
+    doc.rect(MARGEN, posY, ANCHO_CONTENIDO, 24).fillColor(COLORES.negro).fill();
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(COLORES.blanco);
+    doc.text('FECHA / HORA', MARGEN + 6, posY + 7, { width: 98, lineBreak: false });
+    doc.text('MOVIMIENTO', MARGEN + 108, posY + 7, { width: 98, lineBreak: false });
+    doc.text('NOTA', MARGEN + 210, posY + 7, { width: 146, lineBreak: false });
+    doc.text('ABONO', MARGEN + 360, posY + 7, { width: 78, align: 'right', lineBreak: false });
+    doc.text('SALDO REST.', MARGEN + 442, posY + 7, {
+      width: 80,
       align: 'right',
       lineBreak: false
     });
-    return posY + 20;
+    return posY + 24;
   };
 
   y = dibujarHeaderPagos(y);
 
   pagos.forEach((p, idx) => {
     const notaPago = limpiarTexto(p.nota) || '-';
-    doc.font('Helvetica').fontSize(8);
-    const altoNota = doc.heightOfString(notaPago, { width: 158 });
-    const altoFila = Math.max(19, altoNota + 9);
+    doc.font('Helvetica').fontSize(9.5);
+    const altoNota = doc.heightOfString(notaPago, { width: 146 });
+    const altoFila = Math.max(22, altoNota + 10);
 
     if (y + altoFila > LIMITE_INFERIOR - 24) {
       doc.addPage();
@@ -686,21 +686,21 @@ function dibujarTablaPagosPdf(doc, yInicio, pagos) {
     const fechaPagoTxt = `${convertirFechaIsoATexto(p.fecha_pago)} ${extraerHoraTexto(p.fecha_pago)}`.trim();
     const movTxt = ETIQUETAS_TIPO_PAGO_PDF[p.tipo] || limpiarTexto(p.tipo) || 'Pago';
 
-    doc.font('Helvetica').fontSize(8).fillColor(COLORES.textoSecundario);
-    doc.text(fechaPagoTxt, MARGEN + 8, y + 5, { width: 92, lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORES.texto);
-    doc.text(movTxt, MARGEN + 104, y + 5, { width: 98, lineBreak: false });
-    doc.font('Helvetica').fontSize(8).fillColor(COLORES.textoSecundario);
-    doc.text(notaPago, MARGEN + 206, y + 5, { width: 158, lineBreak: true });
-    doc.font('Helvetica-Bold').fontSize(8).fillColor(COLORES.negro);
-    doc.text(formatearMoneda(p.monto), MARGEN + 368, y + 5, {
-      width: 74,
+    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.textoSecundario);
+    doc.text(fechaPagoTxt, MARGEN + 6, y + 6, { width: 98, lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.texto);
+    doc.text(movTxt, MARGEN + 108, y + 6, { width: 98, lineBreak: false });
+    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.textoSecundario);
+    doc.text(notaPago, MARGEN + 210, y + 6, { width: 146, lineBreak: true });
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(COLORES.negro);
+    doc.text(formatearMoneda(p.monto), MARGEN + 360, y + 6, {
+      width: 78,
       align: 'right',
       lineBreak: false
     });
-    doc.font('Helvetica').fontSize(8).fillColor(COLORES.texto);
-    doc.text(formatearMoneda(p.saldo_nuevo), MARGEN + 446, y + 5, {
-      width: 74,
+    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.texto);
+    doc.text(formatearMoneda(p.saldo_nuevo), MARGEN + 442, y + 6, {
+      width: 80,
       align: 'right',
       lineBreak: false
     });
@@ -714,9 +714,9 @@ function dibujarTablaPagosPdf(doc, yInicio, pagos) {
 function dibujarPieDocumento(doc, yInicio, { mensajePrincipal, referenciaFolio, lineaFirma = false }) {
   const textoMsg = limpiarTexto(mensajePrincipal);
   const anchoMsg = ANCHO_CONTENIDO - 16;
-  doc.font('Helvetica').fontSize(8.5);
+  doc.font('Helvetica').fontSize(10);
   const altoMsg = textoMsg ? doc.heightOfString(textoMsg, { width: anchoMsg }) : 0;
-  const altoNecesario = (lineaFirma ? 42 : 0) + altoMsg + 32;
+  const altoNecesario = (lineaFirma ? 46 : 0) + altoMsg + 36;
 
   let y = yInicio;
   if (y + altoNecesario > LIMITE_INFERIOR) {
@@ -732,12 +732,12 @@ function dibujarPieDocumento(doc, yInicio, { mensajePrincipal, referenciaFolio, 
       .lineWidth(0.8)
       .strokeColor(COLORES.borde)
       .stroke();
-    doc.font('Helvetica').fontSize(8).fillColor(COLORES.textoTenue);
-    doc.text('Nombre y firma de recibido conforme', MARGEN, y + 4, {
+    doc.font('Helvetica').fontSize(9.5).fillColor(COLORES.textoTenue);
+    doc.text('Nombre y firma de recibido conforme', MARGEN, y + 5, {
       width: ANCHO_CONTENIDO,
       align: 'center'
     });
-    y += 22;
+    y += 24;
   }
 
   y += 6;
@@ -749,12 +749,12 @@ function dibujarPieDocumento(doc, yInicio, { mensajePrincipal, referenciaFolio, 
   y += 8;
 
   if (textoMsg) {
-    doc.font('Helvetica').fontSize(8.5).fillColor(COLORES.textoSecundario);
+    doc.font('Helvetica').fontSize(10).fillColor(COLORES.textoSecundario);
     doc.text(textoMsg, MARGEN + 8, y, { width: anchoMsg, align: 'center', lineBreak: true });
-    y += altoMsg + 5;
+    y += altoMsg + 6;
   }
 
-  doc.font('Helvetica').fontSize(7.5).fillColor(COLORES.textoTenue);
+  doc.font('Helvetica').fontSize(8.5).fillColor(COLORES.textoTenue);
   doc.text(`Documento digital generado por Sistema POS - ${limpiarTexto(referenciaFolio)}`, MARGEN, y, {
     width: ANCHO_CONTENIDO,
     align: 'center'
@@ -908,7 +908,7 @@ async function generarPdfNotaVenta({
     y = dibujarBloqueTotales(doc, y, {
       etiquetaTotal: 'TOTAL',
       valorTotal: formatearMoneda(venta.total),
-      anchoCaja: 242,
+      anchoCaja: 274,
       filasSecundarias: filasTotalesSecundarias
     });
 
