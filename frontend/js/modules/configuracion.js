@@ -83,6 +83,7 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
     iconoSeleccionado: 'camion_volteo',
     escalaLetra: 100,
     escalaLetraPdf: 100,
+    pestanaConfig: 'negocio',
     pestanaPreview: 'venta',
     guardando: false,
     renderizadoBase: false
@@ -104,6 +105,51 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
       escalaLetraPdf: normalizarEscalaLetra(estado.escalaLetraPdf),
       mostrarCamionTicket: iconoTicket !== 'ninguno'
     };
+  }
+
+  function hayCambiosSinGuardar() {
+    const actual = leerFormulario();
+    const guardado = estado.negocio;
+    const iconoGuardado =
+      guardado.iconoTicket ||
+      (guardado.mostrarCamionTicket === false ? 'ninguno' : 'camion_volteo');
+
+    return (
+      actual.nombre !== (guardado.nombre || '').trim() ||
+      actual.telefono !== (guardado.telefono || '').trim() ||
+      actual.direccion !== (guardado.direccion || '').trim() ||
+      actual.rfc !== (guardado.rfc || '').trim() ||
+      actual.mensajeTicket !== (guardado.mensajeTicket || '').trim() ||
+      actual.mensajePresupuesto !== (guardado.mensajePresupuesto || '').trim() ||
+      actual.mensajePdf !== (guardado.mensajePdf || '').trim() ||
+      actual.iconoTicket !== iconoGuardado ||
+      actual.escalaLetra !== normalizarEscalaLetra(guardado.escalaLetra) ||
+      actual.escalaLetraPdf !== normalizarEscalaLetra(guardado.escalaLetraPdf)
+    );
+  }
+
+  function actualizarEstadoGuardado() {
+    const statusEl = contenedor.querySelector('#cfg-save-status');
+    const btnRestaurar = contenedor.querySelector('#cfg-btn-restaurar');
+    if (!statusEl) {
+      return;
+    }
+
+    const sucio = hayCambiosSinGuardar();
+    if (btnRestaurar) {
+      btnRestaurar.disabled = !sucio || estado.guardando;
+    }
+
+    if (sucio) {
+      statusEl.innerHTML =
+        '<span class="badge badge-warning">Cambios sin guardar</span><span>Presione "Guardar cambios" para aplicarlos.</span>';
+      return;
+    }
+
+    const fechaTxt = estado.negocio.fecha_modificacion
+      ? `Actualizado: ${formatearFechaHora(estado.negocio.fecha_modificacion)}`
+      : 'Sin cambios pendientes';
+    statusEl.innerHTML = `<span class="badge badge-success">Todo guardado</span><span>${escaparHtml(fechaTxt)}</span>`;
   }
 
   function sincronizarUnControlEscala({ idPrefijo, dataAttr, valor }) {
@@ -245,6 +291,7 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
 
   function actualizarVistaPrevia() {
     const previewEl = contenedor.querySelector('#cfg-doc-preview');
+    const captionEl = contenedor.querySelector('#cfg-preview-caption');
     if (!previewEl) {
       return;
     }
@@ -283,11 +330,19 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
         detalle: detalleEjemplo,
         negocio: borrador
       });
+      if (captionEl) {
+        captionEl.textContent = `Ticket 58 mm (presupuesto) - Letra al ${borrador.escalaLetra}% (${obtenerEtiquetaEscala(borrador.escalaLetra)})`;
+      }
+      actualizarEstadoGuardado();
       return;
     }
 
     if (estado.pestanaPreview === 'pdf') {
       previewEl.innerHTML = renderizarMiniaturaPdf(borrador);
+      if (captionEl) {
+        captionEl.textContent = `Nota PDF (hoja carta) - Letra al ${borrador.escalaLetraPdf}% (${obtenerEtiquetaEscala(borrador.escalaLetraPdf)})`;
+      }
+      actualizarEstadoGuardado();
       return;
     }
 
@@ -303,6 +358,38 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
       detalle: detalleEjemplo,
       negocio: borrador
     });
+    if (captionEl) {
+      captionEl.textContent = `Ticket 58 mm (venta) - Letra al ${borrador.escalaLetra}% (${obtenerEtiquetaEscala(borrador.escalaLetra)})`;
+    }
+    actualizarEstadoGuardado();
+  }
+
+  function cambiarPestanaConfig(tabId, { sincronizarPreview = true } = {}) {
+    estado.pestanaConfig = tabId;
+
+    contenedor.querySelectorAll('[data-cfg-tab]').forEach((btn) => {
+      const activo = btn.dataset.cfgTab === tabId;
+      btn.classList.toggle('active', activo);
+      btn.setAttribute('aria-selected', activo ? 'true' : 'false');
+    });
+
+    contenedor.querySelectorAll('[data-cfg-panel]').forEach((panel) => {
+      panel.classList.toggle('hidden', panel.dataset.cfgPanel !== tabId);
+    });
+
+    if (sincronizarPreview) {
+      if (tabId === 'ticket') {
+        estado.pestanaPreview = 'venta';
+      } else if (tabId === 'pdf') {
+        estado.pestanaPreview = 'pdf';
+      } else if (tabId === 'negocio' || tabId === 'dibujo') {
+        if (estado.pestanaPreview === 'pdf') {
+          estado.pestanaPreview = 'venta';
+        }
+      }
+    }
+
+    actualizarVistaPrevia();
   }
 
   function llenarFormulario(negocio) {
@@ -331,13 +418,6 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
     setVal('#cfg-mensaje-presupuesto', estado.negocio.mensajePresupuesto);
     setVal('#cfg-mensaje-pdf', estado.negocio.mensajePdf);
 
-    const metaEl = contenedor.querySelector('#cfg-ultima-modificacion');
-    if (metaEl) {
-      metaEl.textContent = estado.negocio.fecha_modificacion
-        ? `Ultima actualizacion guardada: ${formatearFechaHora(estado.negocio.fecha_modificacion)}`
-        : 'Cambios reflejados inmediatamente en tickets de 58 mm, presupuestos y notas PDF.';
-    }
-
     actualizarControlEscala();
     renderizarSelectorIconos();
     actualizarVistaPrevia();
@@ -353,140 +433,172 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
         <div class="card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Datos y personalizacion de documentos</h2>
-              <p class="card-subtitle">Configure datos del negocio, mensajes para ventas, presupuestos y PDF, tamano de letra e ilustracion del encabezado</p>
+              <h2 class="card-title">Configuracion de notas</h2>
+              <p class="card-subtitle">Elija una seccion para editar y revise el resultado a la derecha</p>
             </div>
           </div>
 
-          <div class="card-body">
-            <form id="form-configuracion-negocio" class="form-grid">
-              <div class="field col-span-2">
-                <label for="cfg-nombre">Nombre de la casa de materiales *</label>
-                <input
-                  type="text"
-                  id="cfg-nombre"
-                  class="input"
-                  required
-                  minlength="2"
-                  maxlength="150"
-                  placeholder="Ej. Casa de Materiales El Constructor"
-                >
+          <div class="cfg-tabs" role="tablist" aria-label="Secciones de configuracion">
+            <button type="button" class="cfg-tab-btn active" data-cfg-tab="negocio" role="tab" aria-selected="true">1. Negocio</button>
+            <button type="button" class="cfg-tab-btn" data-cfg-tab="ticket" role="tab" aria-selected="false">2. Ticket (58 mm)</button>
+            <button type="button" class="cfg-tab-btn" data-cfg-tab="pdf" role="tab" aria-selected="false">3. Nota PDF</button>
+            <button type="button" class="cfg-tab-btn" data-cfg-tab="dibujo" role="tab" aria-selected="false">4. Dibujo</button>
+          </div>
+
+          <form id="form-configuracion-negocio" novalidate>
+            <div class="card-body">
+              <div class="cfg-tab-panel" data-cfg-panel="negocio">
+                <div class="cfg-panel-intro">
+                  <h3 class="cfg-panel-intro-title">Datos del establecimiento</h3>
+                  <p class="cfg-panel-intro-desc">Aparecen en el encabezado de todos los tickets y notas PDF.</p>
+                </div>
+
+                <div class="form-grid">
+                  <div class="field col-span-2">
+                    <label for="cfg-nombre">Nombre de la casa de materiales *</label>
+                    <input
+                      type="text"
+                      id="cfg-nombre"
+                      class="input"
+                      required
+                      minlength="2"
+                      maxlength="150"
+                      placeholder="Ej. Casa de Materiales El Constructor"
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label for="cfg-telefono">Numero de telefono</label>
+                    <input
+                      type="text"
+                      id="cfg-telefono"
+                      class="input"
+                      maxlength="60"
+                      placeholder="Ej. Tel. 555-234-8910"
+                    >
+                  </div>
+
+                  <div class="field">
+                    <label for="cfg-rfc">RFC o dato fiscal</label>
+                    <input
+                      type="text"
+                      id="cfg-rfc"
+                      class="input"
+                      maxlength="60"
+                      placeholder="Ej. RFC: CME240101AB1"
+                    >
+                  </div>
+
+                  <div class="field col-span-2">
+                    <label for="cfg-direccion">Direccion del establecimiento</label>
+                    <input
+                      type="text"
+                      id="cfg-direccion"
+                      class="input"
+                      maxlength="255"
+                      placeholder="Ej. Av. Principal No. 145, Col. Centro"
+                    >
+                  </div>
+                </div>
               </div>
 
-              <div class="field">
-                <label for="cfg-telefono">Numero de telefono</label>
-                <input
-                  type="text"
-                  id="cfg-telefono"
-                  class="input"
-                  maxlength="60"
-                  placeholder="Ej. Tel. 555-234-8910"
-                >
-              </div>
+              <div class="cfg-tab-panel hidden" data-cfg-panel="ticket">
+                <div class="cfg-panel-intro">
+                  <h3 class="cfg-panel-intro-title">Impresion de ticket termico (58 mm)</h3>
+                  <p class="cfg-panel-intro-desc">Ajuste la letra y los mensajes al pie para tickets de venta y presupuestos.</p>
+                </div>
 
-              <div class="field">
-                <label for="cfg-rfc">RFC o dato fiscal</label>
-                <input
-                  type="text"
-                  id="cfg-rfc"
-                  class="input"
-                  maxlength="60"
-                  placeholder="Ej. RFC: CME240101AB1"
-                >
-              </div>
-
-              <div class="field col-span-2">
-                <label for="cfg-direccion">Direccion del establecimiento</label>
-                <input
-                  type="text"
-                  id="cfg-direccion"
-                  class="input"
-                  maxlength="255"
-                  placeholder="Ej. Av. Principal No. 145, Col. Centro"
-                >
-              </div>
-
-              <div class="col-span-2 cfg-section-title">
-                Notas y mensajes de documentos
-                <div class="cfg-section-help">Edite por separado el pie de nota de ventas (58 mm), presupuestos y notas digitales en PDF</div>
-              </div>
-
-              <div class="field col-span-2">
-                <label for="cfg-mensaje">Nota / mensaje al pie del ticket de venta (58 mm)</label>
-                <textarea
-                  id="cfg-mensaje"
-                  class="textarea"
-                  maxlength="500"
-                  placeholder="Gracias por su compra. Conserve este comprobante para cualquier aclaracion."
-                ></textarea>
-              </div>
-
-              <div class="field col-span-2">
-                <label for="cfg-mensaje-presupuesto">Nota / mensaje en presupuestos (ticket 58 mm y PDF)</label>
-                <textarea
-                  id="cfg-mensaje-presupuesto"
-                  class="textarea"
-                  maxlength="500"
-                  placeholder="Cotizacion informativa. No valido como comprobante de pago ni descuenta inventario. Precios sujetos a cambio sin previo aviso."
-                ></textarea>
-              </div>
-
-              <div class="field col-span-2">
-                <label for="cfg-mensaje-pdf">Nota / mensaje en nota de venta digital (PDF)</label>
-                <textarea
-                  id="cfg-mensaje-pdf"
-                  class="textarea"
-                  maxlength="500"
-                  placeholder="Gracias por su compra. Documento digital emitido por el establecimiento para referencia y control del cliente."
-                ></textarea>
-              </div>
-
-              <div class="col-span-2 cfg-section-title">
-                Tamano de letra al imprimir (independiente)
-                <div class="cfg-section-help">Ajuste por separado el tamano de letra para tickets de 58 mm y para documentos PDF</div>
-              </div>
-
-              <div class="col-span-2" style="display:flex;flex-direction:column;gap:10px;">
                 ${construirBloqueControlEscala({
                   idPrefijo: 'cfg-escala',
                   dataPreset: 'escala-preset',
-                  titulo: 'Ticket termico (58 mm) - Ventas y presupuestos'
+                  titulo: 'Tamano de letra del ticket (58 mm)'
                 })}
+
+                <div class="field">
+                  <label for="cfg-mensaje">Mensaje al pie del ticket de venta</label>
+                  <textarea
+                    id="cfg-mensaje"
+                    class="textarea"
+                    maxlength="500"
+                    placeholder="Gracias por su compra. Conserve este comprobante para cualquier aclaracion."
+                  ></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="cfg-mensaje-presupuesto">Mensaje al pie de presupuestos (ticket 58 mm y PDF)</label>
+                  <textarea
+                    id="cfg-mensaje-presupuesto"
+                    class="textarea"
+                    maxlength="500"
+                    placeholder="Cotizacion informativa. No valido como comprobante de pago ni descuenta inventario. Precios sujetos a cambio sin previo aviso."
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="cfg-tab-panel hidden" data-cfg-panel="pdf">
+                <div class="cfg-panel-intro">
+                  <h3 class="cfg-panel-intro-title">Notas digitales en PDF (hoja carta)</h3>
+                  <p class="cfg-panel-intro-desc">Tamano de letra y mensaje exclusivo para los PDFs, independiente del ticket.</p>
+                </div>
+
                 ${construirBloqueControlEscala({
                   idPrefijo: 'cfg-escala-pdf',
                   dataPreset: 'escala-pdf-preset',
-                  titulo: 'Documentos PDF (hoja carta) - Notas y presupuestos'
+                  titulo: 'Tamano de letra de documentos PDF'
                 })}
+
+                <div class="field">
+                  <label for="cfg-mensaje-pdf">Mensaje al pie de nota de venta digital (PDF)</label>
+                  <textarea
+                    id="cfg-mensaje-pdf"
+                    class="textarea"
+                    maxlength="500"
+                    placeholder="Gracias por su compra. Documento digital emitido por el establecimiento para referencia y control del cliente."
+                  ></textarea>
+                </div>
+
+                <div class="cfg-pdf-test-box">
+                  <div style="font-size:12.5px;font-weight:700;color:var(--text-primary);">Probar descarga de PDF con estos ajustes</div>
+                  <div class="cfg-pdf-test-actions">
+                    <button type="button" class="btn btn-secondary btn-sm" id="cfg-btn-pdf-venta">
+                      Descargar PDF de venta (prueba)
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="cfg-btn-pdf-presupuesto">
+                      Descargar PDF de presupuesto (prueba)
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div class="col-span-2 cfg-section-title">
-                Ilustracion para tickets y PDFs
-                <div class="cfg-section-help">Elija entre 3 opciones de camiones, 2 maquinas de excavar o solo texto</div>
-              </div>
+              <div class="cfg-tab-panel hidden" data-cfg-panel="dibujo">
+                <div class="cfg-panel-intro">
+                  <h3 class="cfg-panel-intro-title">Dibujo del encabezado</h3>
+                  <p class="cfg-panel-intro-desc">Seleccione un camion, una maquina de excavar o imprima solo texto.</p>
+                </div>
 
-              <div class="col-span-2">
                 <div id="cfg-icon-picker" class="icon-picker-grid"></div>
               </div>
+            </div>
 
-              <div class="col-span-2 info-box" id="cfg-ultima-modificacion"></div>
-
-              <div class="col-span-2" style="display:flex;justify-content:flex-end;gap:10px;margin-top:4px;flex-wrap:wrap;">
-                <button type="button" class="btn btn-secondary" id="cfg-btn-restaurar">
-                  Recargar guardados
+            <div class="cfg-save-bar">
+              <div id="cfg-save-status" class="cfg-save-status"></div>
+              <div class="cfg-save-actions">
+                <button type="button" class="btn btn-secondary" id="cfg-btn-restaurar" disabled>
+                  Descartar
                 </button>
                 <button type="submit" class="btn btn-primary" id="cfg-btn-guardar">
-                  Guardar configuracion
+                  Guardar cambios
                 </button>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
 
-        <div class="card">
+        <div class="card cfg-preview-card">
           <div class="card-header">
             <div>
-              <h2 class="card-title">Vista previa de documentos</h2>
-              <p class="card-subtitle">Cambie de pestana para revisar cada formato en tiempo real</p>
+              <h2 class="card-title">Vista previa en vivo</h2>
+              <p class="card-subtitle">Cambie de pestana para revisar cada formato</p>
             </div>
             <div class="pos-view-switch" role="tablist" aria-label="Vista previa de documentos">
               <button type="button" class="pos-view-btn active" data-cfg-preview-tab="venta">Ticket venta</button>
@@ -496,18 +608,17 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
           </div>
           <div class="card-body">
             <div id="cfg-doc-preview" class="ticket-preview-wrapper"></div>
-            <div class="cfg-pdf-actions">
-              <button type="button" class="btn btn-secondary btn-sm" id="cfg-btn-pdf-venta">
-                Descargar PDF de venta (prueba)
-              </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="cfg-btn-pdf-presupuesto">
-                Descargar PDF de presupuesto (prueba)
-              </button>
-            </div>
+            <div id="cfg-preview-caption" class="cfg-preview-caption"></div>
           </div>
         </div>
       </div>
     `;
+
+    contenedor.querySelectorAll('[data-cfg-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        cambiarPestanaConfig(btn.dataset.cfgTab);
+      });
+    });
 
     const camposPreview = [
       '#cfg-nombre',
@@ -522,6 +633,20 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
       const el = contenedor.querySelector(selector);
       el?.addEventListener('input', actualizarVistaPrevia);
       el?.addEventListener('change', actualizarVistaPrevia);
+    });
+
+    contenedor.querySelector('#cfg-mensaje')?.addEventListener('focus', () => {
+      if (estado.pestanaPreview !== 'venta') {
+        estado.pestanaPreview = 'venta';
+        actualizarVistaPrevia();
+      }
+    });
+
+    contenedor.querySelector('#cfg-mensaje-presupuesto')?.addEventListener('focus', () => {
+      if (estado.pestanaPreview !== 'presupuesto') {
+        estado.pestanaPreview = 'presupuesto';
+        actualizarVistaPrevia();
+      }
     });
 
     const controlesEscala = [
@@ -582,7 +707,8 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
     });
 
     contenedor.querySelector('#cfg-btn-restaurar')?.addEventListener('click', () => {
-      cargarDatos();
+      llenarFormulario(estado.negocio);
+      mostrarToast('Cambios descartados.', 'warning');
     });
 
     contenedor
@@ -596,11 +722,14 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
         const btnGuardar = contenedor.querySelector('#cfg-btn-guardar');
         const payload = leerFormulario();
         if (payload.nombre.length < 2) {
+          cambiarPestanaConfig('negocio', { sincronizarPreview: false });
+          contenedor.querySelector('#cfg-nombre')?.focus();
           mostrarToast('El nombre de la casa de materiales debe tener al menos 2 caracteres.', 'error');
           return;
         }
 
         estado.guardando = true;
+        actualizarEstadoGuardado();
         if (btnGuardar) {
           btnGuardar.disabled = true;
           btnGuardar.textContent = 'Guardando...';
@@ -622,13 +751,15 @@ export function crearModuloConfiguracion({ onConfiguracionActualizada }) {
           estado.guardando = false;
           if (btnGuardar) {
             btnGuardar.disabled = false;
-            btnGuardar.textContent = 'Guardar configuracion';
+            btnGuardar.textContent = 'Guardar cambios';
           }
+          actualizarEstadoGuardado();
         }
       });
 
     actualizarControlEscala();
     renderizarSelectorIconos();
+    cambiarPestanaConfig(estado.pestanaConfig, { sincronizarPreview: false });
     estado.renderizadoBase = true;
   }
 
